@@ -110,20 +110,20 @@ my %custom_primitive_inits = (
 
 my %custom_container_handlers = (
     'stl-vector' => sub {
-        my $item = get_container_item_type($_, -void => 'void*');
-        $item = 'char' if $item eq 'bool';
+        my $item = get_container_item_type($_, -void => 'bytes');
+#        $item = 'char' if $item eq 'bool';
 #        header_ref("vector");
         return "repeated $item";
     },
     'stl-deque' => sub {
-        my $item = get_container_item_type($_, -void => 'void*');
+        my $item = get_container_item_type($_, -void => 'bytes');
         header_ref("deque");
-        return "std::deque<$item >";
+        return "repeated $item";
     },
     'stl-set' => sub {
-        my $item = get_container_item_type($_, -void => 'void*');
+        my $item = get_container_item_type($_, -void => 'bytes');
         header_ref("set");
-        return "std::set<$item >";
+        return "repeated $item";
     },
     'stl-bit-vector' => sub {
         header_ref("vector");
@@ -131,16 +131,16 @@ my %custom_container_handlers = (
     },
     'df-flagarray' => sub {
         my $type = decode_type_name_ref($_, -attr_name => 'index-enum', -force_type => 'enum-type') || 'int';
-        return "BitArray<$type>";
+        return "$type";
     },
     'df-static-flagarray' => sub {
         my $type = decode_type_name_ref($_, -attr_name => 'index-enum', -force_type => 'enum-type') || 'int';
         my $size = $_->getAttribute('count') or die "No count in df-static-flagarray.\n";
-        return "StaticBitArray<$size,$type>";
+        return "repeated $type";
     },
     'df-array' => sub {
-        my $item = get_container_item_type($_, -void => 'void*');
-        return "DfArray<$item >";
+        my $item = get_container_item_type($_, -void => 'bytes');
+        return "repeated $item";
     },
     'df-linked-list' => sub {
         my $item = get_container_item_type($_);
@@ -210,9 +210,9 @@ sub get_struct_field_type($;%) {
             } elsif ($subtype eq 'padding') {
                 my $count = $tag->getAttribute('size') || 0;
                 my $alignment = $tag->getAttribute('alignment') || 1;
-                $prefix = $atable{$alignment} or die "Invalid alignment: $alignment\n";
+                $prefix = "bytes";
                 ($count % $alignment) == 0 or die "Invalid size & alignment: $count $alignment\n";
-                $suffix = "[".($count/$alignment)."]";
+                $suffix = "";
             } else {
                 die "Invalid bytes subtype: $subtype\n";
             }
@@ -223,7 +223,12 @@ sub get_struct_field_type($;%) {
         my $tname = $tag->getAttribute('type-name')
             or die "Global field without type-name";
         $type_def = register_ref($tname, !$flags{-weak} || ($subtype && $subtype eq 'enum'));
-        $prefix = $main_namespace.'.'.$tname;
+		if ($subtype && $subtype eq 'enum') {
+			$prefix = $main_namespace.'.enums.'.$tname;
+		}
+		else {
+			$prefix = $main_namespace.'.'.$tname;
+		}
     } elsif ($meta eq 'compound') {
         die "Unnamed compound in global mode: ".$tag->toString."\n" unless $flags{-local};
 
@@ -246,11 +251,13 @@ sub get_struct_field_type($;%) {
             } $tag, $prefix;
         }
     } elsif ($meta eq 'pointer') {
-        $prefix = get_container_item_type($tag, -weak => 1, -void => 'void');
+        $prefix = get_container_item_type($tag, -weak => 1, -void => 'bytes');
     } elsif ($meta eq 'static-array') {
         ($prefix, $suffix) = get_container_item_type($tag);
         my $count = get_container_count($tag);
-		$prefix = "repeated ".$prefix;
+		if (index($prefix, "repeated") != 0) {
+			$prefix = "repeated ".$prefix;
+		}
 #        $suffix = "[$count]".$suffix;
     } elsif ($meta eq 'primitive') {
         local $_ = $tag;
@@ -291,8 +298,8 @@ sub get_struct_field_type($;%) {
     return $prefix;
 }
 
-sub render_struct_field($$) {
-    my ($tag,$value) = @_;
+sub render_struct_field($$;$) {
+    my ($tag,$value,$in_union_body) = @_;
 
     # Special case: anonymous compounds.
     if (is_attr_true($tag, 'ld:anon-compound'))
@@ -310,8 +317,14 @@ sub render_struct_field($$) {
     $tag->setAttribute('ld:anon-name', $name) unless $field_name;
     with_anon {
         my ($prefix, $postfix) = get_struct_field_type($tag, -local => 1);
-        emit_comment $tag;
-        emit $prefix, ' ', $name, $postfix, ' = ', $value ,';', get_comment($tag);
+		emit_comment $tag;
+		if ($in_union_body && (index($prefix, "repeated") == 0)) {
+			# protobuf forbids arrays in oneof
+			emit '// container field \'', $name, '\' disabled for compatibility with protobuf unions ', get_comment($tag)
+		}
+		else {
+			emit $prefix, ' ', $name, $postfix, ' = ', $value ,';', get_comment($tag);
+		}
     } "T_$name";
 }
 
@@ -559,7 +572,7 @@ sub emit_struct_fields($$;%) {
     my @fields = get_struct_fields($tag);
 	my $count = 1;
 	for my $f (@fields) {
-		render_struct_field($f, $count);
+		render_struct_field($f, $count, $in_union_body);
 		$count++;
 	}
 
@@ -592,8 +605,8 @@ sub emit_struct_fields($$;%) {
         #             "\"$name\", NULL, $ftable);";
         # } 'fields-' . $fields_group;
 
-        # Needed for unions with fields with non-default ctors (e.g. bitfields)
-        emit "$name(){}";
+        # # Needed for unions with fields with non-default ctors (e.g. bitfields)
+        # emit "$name(){}";
 
         return;
     }
