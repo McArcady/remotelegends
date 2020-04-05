@@ -32,7 +32,11 @@ sub render_bitfield_core {
         my $idx = 0;
         my @idlist;
 
-        # emit_block {
+		emit $base, ' flags = 1;';
+
+        emit_block {
+			emit 'NONE = 0;';
+			
             for my $item (@fields) {
                 ($item->getAttribute('ld:meta') eq 'number' &&
                     $item->getAttribute('ld:subtype') eq 'flag-bit')
@@ -54,31 +58,19 @@ sub render_bitfield_core {
                 }
 
                 push @idlist, [ $name, $idx, sprintf('0x%xU',((1<<$size)-1)<<$idx), ';' ];
+                emit_comment $item;
+				my $mask = ((1<<$size)-1)<<$idx;
+				my $sign = 1;
+				if ($idx == 31) {
+					# protobuf enums are sint32 -> 2^31 must be declared negative
+					$sign = -1;
+			    }
+                emit $name, " = ", sprintf('%s0x%x', $sign<0?"-":"", $mask), ";", get_comment($item);
+
                 $idx += $size;
-
-        #         emit_comment $item;
-        #         emit $fbase, " ", $name, " : ", $size, ";", get_comment($item);
             }
-        # } "struct ", " bits;";
+        } "enum mask ";
 
-        emit_block {
-            for my $r (@idlist) {
-                emit "shift_", $r->[0], " = ", $r->[1], $r->[3];
-            }
-		} "enum Shift ";
-		
-		emit_block {
-
-			emit $base, ' whole = 1;';
-
-			# emit_block {
-			#     for my $r (@idlist) {
-			#         emit "mask_", $r->[0], " = ", $r->[2], $r->[3];
-			#     }
-			# } "enum Mask : $base ", ";";
-
-			#        emit $name, "($base whole_ = 0) : whole(whole_) {};";
-		} "oneof flags ", ";";
 	} "message $name ", ";";
 
     my $full_name = fully_qualified_name($tag, $name, 1);

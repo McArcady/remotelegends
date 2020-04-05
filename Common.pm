@@ -177,7 +177,6 @@ sub emit_package_block(&;$$%) {
     $suffix ||= '';
     emit $prefix;
     push @lines, @inner;
-#    emit '}',$suffix;
 }
 
 # Primitive types
@@ -191,10 +190,10 @@ my @primitive_type_list =
        padding static-string);
 
 my %primitive_aliases = (
-	'int8_t' => 'int8',
-	'uint8_t' => 'uint8',
-	'int16_t' => 'int16',
-	'uint16_t' => 'uint16',
+	'int8_t' => 'int32',
+	'uint8_t' => 'uint32',
+	'int16_t' => 'int32',
+	'uint16_t' => 'uint32',
 	'int32_t' => 'int32',
 	'uint32_t' => 'uint32',
 	'int64_t' => 'int64',
