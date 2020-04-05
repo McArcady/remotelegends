@@ -35,6 +35,7 @@ sub render_bitfield_core {
 		emit $base, ' flags = 1;';
 
         emit_block {
+			# protobuf requires this
 			emit 'NONE = 0;';
 			
             for my $item (@fields) {
@@ -114,7 +115,9 @@ sub render_bitfield_core {
 
 sub render_bitfield_type {
     my ($tag) = @_;
-    render_bitfield_core($typename,$tag);
+	emit_package_block {
+		render_bitfield_core($typename,$tag);
+	} "package $main_namespace;";
 }
 
 1;

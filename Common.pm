@@ -286,7 +286,7 @@ sub decode_type_name_ref($;%) {
         register_ref $tname, !$flags{-weak};
         die "Cannot use type $tname as $attr here: $tag\n"
             if ($force_type && $force_type ne $types{$tname}->getAttribute('ld:meta'));
-        my $rtype = $main_namespace.'::'.$tname;
+        my $rtype = $main_namespace.'.'.$tname;
         return wantarray ? ($rtype, $types{$tname}) : $rtype;
     }
 }
@@ -356,14 +356,16 @@ sub with_header_file(&$) {
 
         emit_package_block {
             for my $weak (sort { $a cmp $b } keys %weak_refs) {
-                next if $strong_refs{$weak};
-                my $ttype = $types{$weak};
-                my $meta = $ttype->getAttribute('ld:meta');
-                my $tstr = 'struct';
-                $tstr = 'enum' if $meta eq 'enum-type';
-                $tstr = 'oneof' if $meta eq 'bitfield-type';
-                $tstr = 'oneof' if ($meta eq 'struct-type' && is_attr_true($ttype,'is-union'));
-                emit $tstr, ' ', $weak, ';';
+				emit "import \"$weak.proto\";";
+				
+                # next if $strong_refs{$weak};
+                # my $ttype = $types{$weak};
+                # my $meta = $ttype->getAttribute('ld:meta');
+                # my $tstr = 'message';
+                # $tstr = 'enum' if $meta eq 'enum-type';
+                # $tstr = 'oneof' if $meta eq 'bitfield-type';
+                # $tstr = 'oneof' if ($meta eq 'struct-type' && is_attr_true($ttype,'is-union'));
+                # emit $tstr, ' ', $weak, ';';
             }
 
             push @lines, @code;

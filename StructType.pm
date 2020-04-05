@@ -213,16 +213,18 @@ sub render_struct_type {
     if ($inherits) {
         register_ref $inherits, 1;
 #        $ispec = ' : '.$inherits;
-    } elsif ($is_class) {
-        $ispec = ' : virtual_class';
-    } elsif ($is_linked_list) {
-        register_ref $item_type, 1;
-        $ispec = ' : DfLinkedList<'.$typename.', '.$item_type.'>';
+    # } elsif ($is_class) {
+    #     $ispec = ' : virtual_class';
+    # } elsif ($is_linked_list) {
+    #     register_ref $item_type, 1;
+    #     $ispec = ' : DfLinkedList<'.$typename.', '.$item_type.'>';
     }
 
     if ($list_link_type) {
         register_ref $list_link_type, 0;
     }
+
+	emit_package_block {
 
     with_struct_block {
         my $vmethod_emit = sub {
@@ -285,6 +287,8 @@ sub render_struct_type {
 
         emit_struct_fields($tag, $typename, -class => $is_class, -inherits => $inherits);
     } $tag, "$typename$ispec", -export => 1;
+
+	} "package $main_namespace;";
 }
 
 1;

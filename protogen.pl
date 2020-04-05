@@ -183,9 +183,9 @@ mkdir $output_dir;
 #            $data .= "#include \"$name.h\"\n";
             $data .= "import \"$name.proto\"\n";
         }
-        $data .= "package $main_namespace\n";
+        $data .= "package $main_namespace;\n";
 #        $data .= "namespace $main_namespace {\n";
-        $data .= join("\n", @{$static_lines{$tag}})."\n";
+#        $data .= join("\n", @{$static_lines{$tag}})."\n";
 #        $data .= '}'."\n";
 
         my $name = $output_dir.'/static'.($tag?'.'.$tag:'').'.inc';
