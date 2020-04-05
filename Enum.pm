@@ -67,10 +67,10 @@ sub render_enum_core($$) {
 			}
 			if ($value < 0) {
 				$value = 256 + $value;
-				push @postponed, $name.' = '.$value.';';
+				push @postponed, $ename.'_'.$name.' = '.$value.';';
 			}
 			else {
-				emit $name, ' = ', $value, ';';
+				emit $ename.'_'.$name, ' = ', $value, ';';
 			}
         }
 		
