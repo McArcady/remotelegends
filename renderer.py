@@ -3,8 +3,9 @@ from collections import defaultdict
 
 class Renderer:
 
-    def __init__(self):
-        pass
+    def __init__(self, namespace):
+        self.ns = namespace
+        self.imports = []
     
     TYPES = defaultdict(lambda: None, {
         k:v for k,v in {
@@ -16,41 +17,80 @@ class Renderer:
 
     @staticmethod
     def convert_type(typ):
-        return Renderer.TYPES[typ] or 'T_'+typ
+        return Renderer.TYPES[typ]
+
+    @staticmethod
+    def is_primitive_type(typ):
+        return typ in Renderer.TYPES.keys()
 
     # enumerations
 
     def render_enum_type(self, xml, tname=None):
         if not tname:            
             tname = xml.get('type-name')
+        assert tname
         out = 'enum ' + tname + ' {\n'
         count = 0
         ident = '  '
         for item in xml.findall('enum-item'):
-            out += ident + item.get('name') + ' = ' + str(count) + ';\n'
+            name = item.get('name')
+            assert name
+            out += ident + name + ' = ' + str(count) + ';\n'
             count += 1
         out += '}\n'
         return out
 
     def render_enum(self, xml, value=1):
-        tname = xml.get('{ns}typedef-name')
+        tname = xml.get(f'{self.ns}typedef-name')
         name = xml.get('name')
+        assert name
+        assert tname
         out = self.render_enum_type(xml, tname)
         out += tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
 
     # fields & containers
     
-    def render_container(self, xml):
-        tname = xml.get('type-name')
+    def render_container(self, xml, value=1):
+        tname = xml.get('pointer-type')
+        if tname:
+            self.imports.append(tname)
+        else:
+            tname = Renderer.convert_type(xml.get('type-name'))
+        if not tname:
+            tname = 'bytes'
         name = xml.get('name')
-        out = 'repeat ' + Renderer.convert_type(tname) + ' ' + name + ';\n'
+        assert name
+        assert tname
+        out = 'repeated ' + tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
 
-    def render_field(self, xml, value):
-        styp = Renderer.convert_type(xml.get('{ns}subtype') or 'anon')
+    def render_simple_field(self, xml, value=1):
+        styp = xml.get(f'{self.ns}subtype')
+        if Renderer.is_primitive_type(styp):
+            styp = Renderer.convert_type(styp)
+        if not styp:
+            styp = 'T_anon'
         name = xml.get('name') or 'anon'
         return styp + ' ' + name + ' = ' + str(value) + ';\n'
+
+    def render_field(self, xml, value):
+        meta = xml.get(f'{self.ns}meta')
+        assert meta
+        if meta != 'primitive' and meta != 'number':
+            return self.render(xml, value)
+        else:
+            return self.render_simple_field(xml, value)
+
+    def render_pointer(self, xml, value=1):
+        tname = xml.get('type-name')
+        name = xml.get('name')
+        assert name
+        assert tname
+        if not Renderer.is_primitive_type(tname):
+            self.imports.append(tname)
+        out = tname + ' ' + name + ' = ' + str(value) + ';\n'
+        return out
 
     # structs
 
@@ -60,7 +100,7 @@ class Renderer:
         out  = 'message ' + tname + ' {\n'
         count = 1
         ident = '  '
-        for item in xml.findall('{ns}field'):
+        for item in xml.findall(f'{self.ns}field'):
             out += ident + self.render_field(item, count)
             count += 1
         out += '}\n'
@@ -78,42 +118,46 @@ class Renderer:
         ident = '  '
         fields = ''
         predecl = []
-        for item in xml.findall('{ns}field'):
-            meta = item.get('{ns}meta')
+        for item in xml.findall(f'{self.ns}field'):
+            meta = item.get(f'{self.ns}meta')
             if meta == 'compound':
                 predecl += self.render_anon_compound(item)
-            fields += ident + self.render_field(item, count)
+            fields += ident + self.render_simple_field(item, count)
             count += 1
         out = ''
         if predecl:
             for decl in predecl:
                 out += decl
-            out += '\n'
         out += 'oneof ' + tname + ' {\n'
         out += fields + '}'
         return out
 
     # main renderer
 
-    def render(self, xml):
-        meta = xml.get('{ns}meta')
-        if meta == 'enum-type':
-            return self.render_enum_type(xml)
-        elif meta == 'compound':
-            subtype = xml.get('{ns}subtype')
-            anon = xml.get('{ns}anon-compound')
-            union = xml.get('is-union')
-            if subtype == 'enum':
-                return self.render_enum(xml)
-            elif anon == 'true':
-                if union == 'true':
-                    return self.render_union(xml, 'anon')
-                return self.render_anon_compound(xml)
-            else:
-                raise Exception('not supported: '+meta+'/'+subtype)
-        elif meta == 'container':
-            return self.render_container(xml)
-        elif meta == 'struct-type':
-            return self.render_struct_type(xml)
-        else:
-            raise Exception('no supported: '+meta)
+    def render(self, xml, value=1):
+        try:
+            meta = xml.get(f'{self.ns}meta')
+            if meta == 'compound':
+                subtype = xml.get(f'{self.ns}subtype')
+                anon = xml.get(f'{self.ns}anon-compound')
+                union = xml.get('is-union')
+                if subtype == 'enum':
+                    return self.render_enum(xml, value)
+                elif anon == 'true':
+                    if union == 'true':
+                        return self.render_union(xml, 'anon')
+                    return self.render_anon_compound(xml)
+                else:
+                    raise Exception('not supported: '+meta+'/'+subtype)
+            elif meta == 'container':
+                return self.render_container(xml, value)
+            elif meta == 'enum-type':
+                return self.render_enum_type(xml)
+            elif meta == 'pointer':
+                return self.render_pointer(xml)
+            elif meta == 'struct-type':
+                return self.render_struct_type(xml)
+        except Exception as e:
+            print('error rendering element %s (meta=%s) at line %d: %s' % (xml.tag, meta, xml.sourceline, e))
+            return ""
+        raise Exception('no supported: element '+xml.tag+': meta='+str(meta))

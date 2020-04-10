@@ -2,8 +2,9 @@
 
 import unittest
 import mock
+import re
 import subprocess
-import xml.etree.ElementTree as ET
+from lxml import etree
 
 from renderer import Renderer
 
@@ -19,7 +20,7 @@ class TestRender(unittest.TestCase):
             fil.write('syntax = "proto3";\n')
             
     def setUp(self):
-        self.sut = Renderer()
+        self.sut = Renderer('{ns}')
 
     def tearDown(self):
         with open(OUTPUT_FNAME, 'a') as fil:
@@ -41,7 +42,7 @@ class TestRender(unittest.TestCase):
           </ld:global-type>
         </ld:data-definition>
         """
-        root = ET.fromstring(XML)
+        root = etree.fromstring(XML)
         out = self.sut.render(root[0])
         self.assertStructEqual(out, """
         enum ui_advmode_menu {
@@ -60,7 +61,7 @@ class TestRender(unittest.TestCase):
           </ld:field>
         </ld:data-definition>
         """
-        root = ET.fromstring(XML)
+        root = etree.fromstring(XML)
         out = self.sut.render(root[0])
         self.assertStructEqual(out, """
         enum T_state {
@@ -76,30 +77,80 @@ class TestRender(unittest.TestCase):
           <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" type-name="int16_t" name="talk_choices" ld:is-container="true"><ld:item ld:level="2" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/></ld:field>
         </ld:data-definition>
         """
-        root = ET.fromstring(XML)
+        root = etree.fromstring(XML)
         out = self.sut.render(root[0])
         self.assertStructEqual(out, """
-        repeat int32 talk_choices;
+        repeated int32 talk_choices = 1;
         """)
         
-    def test_render_struct_type(self):
+    def test_render_struct_type_with_primitive_fields(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
-        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation1">
           <ld:field name="conv_title" ld:level="1" ld:meta="primitive" ld:subtype="stl-string"/>
           <ld:field name="unk_30" ref-target="unit" ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
         </ld:global-type>
-        </ld:data-definition>        
+        </ld:data-definition>
         """
-        root = ET.fromstring(XML)
+        root = etree.fromstring(XML)
         out = self.sut.render(root[0])
         self.assertStructEqual(out, """
-        message conversation {
+        message conversation1 {
           string conv_title = 1;
           int32 unk_30 = 2;
         }
         """)
         self.output += out + '\n'
+
+    def test_render_struct_type_with_complex_fields(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation2">
+          <ld:field name="conv_title" ld:level="1" ld:meta="primitive" ld:subtype="stl-string"/>
+          <ld:field ld:subtype="enum" base-type="int32_t" name="state" ld:level="1" ld:meta="compound" ld:typedef-name="T_state">
+            <enum-item name="started"/>
+            <enum-item name="active"/>
+          </ld:field>
+          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" type-name="int16_t" name="talk_choices" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+          </ld:field>
+        </ld:global-type>
+        </ld:data-definition>   
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertStructEqual(out, """
+        message conversation2 {
+          string conv_title = 1;
+          enum T_state {
+            started = 0;
+            active = 1;
+          }
+          T_state state = 2;
+          repeated int32 talk_choices = 3;
+        }
+        """)
+        self.output += out + '\n'
+
+    def test_render_struct_type_with_pointer(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation3">
+          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="unk_54" pointer-type="nemesis_record" ld:is-container="true">
+            <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="nemesis_record">
+              <ld:item ld:level="3" ld:meta="global" type-name="nemesis_record"/>
+          </ld:item></ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertListEqual(self.sut.imports, ['nemesis_record'])
+        self.assertStructEqual(out, """
+        message conversation3 {
+          repeated nemesis_record unk_54 = 1;
+        }
+        """)
 
     def test_render_anon_compound(self):
         XML = """
@@ -108,9 +159,9 @@ class TestRender(unittest.TestCase):
             <ld:field name="x" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
             <ld:field name="y" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
           </ld:field>
-        </ld:data-definition>    
+        </ld:data-definition>
         """
-        root = ET.fromstring(XML)
+        root = etree.fromstring(XML)
         out = self.sut.render(root[0])
         self.assertStructEqual(out, """
         message T_anon {
@@ -132,7 +183,7 @@ class TestRender(unittest.TestCase):
           </ld:field>
         </ld:data-definition>
         """        
-        root = ET.fromstring(XML)
+        root = etree.fromstring(XML)
         out = self.sut.render(root[0])
         self.assertStructEqual(out, """
         message T_anon {
@@ -144,3 +195,15 @@ class TestRender(unittest.TestCase):
           T_anon anon = 2;
         }
         """)
+
+
+    def _test_render_global_type(self):
+        tree = etree.parse('codegen/codegen.out.xml')
+        root = tree.getroot()
+        ns = re.match(r'{.*}', root.tag).group(0)
+        sut = Renderer(ns)
+        
+        for e in root:
+            print( ns, e.get(f'{ns}meta'), e.get(f'type-name') )
+            out = sut.render(e)
+            self.output += out + '\n'
