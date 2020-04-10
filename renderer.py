@@ -1,4 +1,6 @@
 from collections import defaultdict
+import sys
+import traceback
 
 
 class Renderer:
@@ -23,6 +25,7 @@ class Renderer:
     def is_primitive_type(typ):
         return typ in Renderer.TYPES.keys()
 
+    
     # enumerations
 
     def render_enum_type(self, xml, tname=None):
@@ -43,12 +46,22 @@ class Renderer:
     def render_enum(self, xml, value=1):
         tname = xml.get(f'{self.ns}typedef-name')
         name = xml.get('name')
-        assert name
         assert tname
+        assert name
         out = self.render_enum_type(xml, tname)
         out += tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
 
+    def render_global_enum(self, xml, value=1):
+        tname = xml.get('type-name')
+        name = xml.get('name')
+        assert tname
+        assert name
+        self.imports.append(tname)
+        out = tname + ' ' + name + ' = ' + str(value) + ';\n'
+        return out
+
+    
     # fields & containers
     
     def render_container(self, xml, value=1):
@@ -71,7 +84,11 @@ class Renderer:
             styp = Renderer.convert_type(styp)
         if not styp:
             styp = 'T_anon'
-        name = xml.get('name') or 'anon'
+        name = xml.get('name')
+        if not name:
+            name = xml.get(f'{self.ns}anon-name')
+        if not name:
+            name = 'anon'
         return styp + ' ' + name + ' = ' + str(value) + ';\n'
 
     def render_field(self, xml, value):
@@ -84,7 +101,11 @@ class Renderer:
 
     def render_pointer(self, xml, value=1):
         tname = xml.get('type-name')
+        if not tname:
+            tname = 'bytes'
         name = xml.get('name')
+        if not name:
+            name = xml.get(f'{self.ns}anon-name')
         assert name
         assert tname
         if not Renderer.is_primitive_type(tname):
@@ -92,6 +113,7 @@ class Renderer:
         out = tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
 
+    
     # structs
 
     def render_struct_type(self, xml, tname=None):
@@ -110,6 +132,29 @@ class Renderer:
         if not tname:
             tname = 'T_anon'
         return self.render_struct_type(xml, tname)
+
+    def render_compound(self, xml, value=1):
+        subtype = xml.get(f'{self.ns}subtype')
+        if subtype == 'enum':
+            return self.render_enum(xml, value)
+        
+        anon = xml.get(f'{self.ns}anon-compound')
+        if anon == 'true':
+            union = xml.get('is-union')
+            if union == 'true':
+                return self.render_union(xml, 'anon')
+            return self.render_anon_compound(xml)
+        
+        tname = xml.get(f'{self.ns}typedef-name')
+        if tname:
+            name = xml.get('name')
+            assert name
+            out = self.render_struct_type(xml, tname)
+            out += tname + ' ' + name + ' = ' + str(value) + ';\n'
+            return out
+
+        raise Exception('not supported: '+meta+'/'+subtype)
+        
 
     # unions
 
@@ -131,6 +176,7 @@ class Renderer:
         out += 'oneof ' + tname + ' {\n'
         out += fields + '}'
         return out
+    
 
     # main renderer
 
@@ -138,26 +184,20 @@ class Renderer:
         try:
             meta = xml.get(f'{self.ns}meta')
             if meta == 'compound':
-                subtype = xml.get(f'{self.ns}subtype')
-                anon = xml.get(f'{self.ns}anon-compound')
-                union = xml.get('is-union')
-                if subtype == 'enum':
-                    return self.render_enum(xml, value)
-                elif anon == 'true':
-                    if union == 'true':
-                        return self.render_union(xml, 'anon')
-                    return self.render_anon_compound(xml)
-                else:
-                    raise Exception('not supported: '+meta+'/'+subtype)
+                return self.render_compound(xml, value)
             elif meta == 'container':
                 return self.render_container(xml, value)
             elif meta == 'enum-type':
                 return self.render_enum_type(xml)
+            elif meta == 'global':
+                return self.render_global_enum(xml)
             elif meta == 'pointer':
                 return self.render_pointer(xml)
             elif meta == 'struct-type':
                 return self.render_struct_type(xml)
         except Exception as e:
-            print('error rendering element %s (meta=%s) at line %d: %s' % (xml.tag, meta, xml.sourceline, e))
+            _,value,tb = sys.exc_info()
+            print('error rendering element %s (meta=%s) at line %d:' % (xml.tag, meta, xml.sourceline))
+            traceback.print_tb(tb)
             return ""
         raise Exception('no supported: element '+xml.tag+': meta='+str(meta))

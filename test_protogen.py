@@ -70,6 +70,19 @@ class TestRender(unittest.TestCase):
         }
         T_state state = 1;
         """)
+
+    def test_render_global_enum(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+          <ld:field ld:subtype="enum" name="type" base-type="int32_t" type-name="talk_choice_type" ld:level="1" ld:meta="global"/>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertListEqual(self.sut.imports, ['talk_choice_type'])
+        self.assertStructEqual(out, """
+        talk_choice_type type = 1;
+        """)
     
     def test_render_container(self):
         XML = """
@@ -150,6 +163,25 @@ class TestRender(unittest.TestCase):
         message conversation3 {
           repeated nemesis_record unk_54 = 1;
         }
+        """)
+
+    def test_render_compound(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+          <ld:field name="unk" ld:level="1" ld:meta="compound" ld:typedef-name="T_unk">
+            <ld:field ld:level="2" ld:meta="pointer" name="event" type-name="entity_event" ld:is-container="true"><ld:item ld:level="3" ld:meta="global" type-name="entity_event"/></ld:field>
+            <ld:field ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32" ld:anon-name="anon_2"/>
+          </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertStructEqual(out, """
+        message T_unk {
+          entity_event event = 1;
+          int32 anon_2 = 2;
+        }
+        T_unk unk = 1;
         """)
 
     def test_render_anon_compound(self):
