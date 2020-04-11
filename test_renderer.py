@@ -79,7 +79,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
-        self.assertListEqual(self.sut.imports, ['talk_choice_type'])
+        self.assertListEqual(list(self.sut.imports), ['talk_choice_type'])
         self.assertStructEqual(out, """
         talk_choice_type type = 1;
         """)
@@ -158,7 +158,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
-        self.assertListEqual(self.sut.imports, ['nemesis_record'])
+        self.assertListEqual(list(self.sut.imports), ['nemesis_record'])
         self.assertStructEqual(out, """
         message conversation3 {
           repeated nemesis_record unk_54 = 1;
@@ -290,6 +290,30 @@ class TestRender(unittest.TestCase):
         }
         T_anon_3 anon_3 = 1;
         """)
+
+    def test_render_class_type(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="adventure_movement_optionst">
+          <ld:field name="dest" type-name="coord" ld:level="1" ld:meta="global"/>
+          <ld:field name="source" type-name="coord" ld:level="1" ld:meta="global"/>
+          <virtual-methods>
+            <vmethod ld:level="1"><ld:field ld:level="2" ld:meta="pointer" ld:is-container="true"/></vmethod>
+            <vmethod ld:level="1"/>
+          </virtual-methods>
+        </ld:global-type>
+        </ld:data-definition>   
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertListEqual(list(self.sut.imports), ['coord'])
+        self.assertStructEqual(out, """
+        message adventure_movement_optionst {
+          coord dest = 1;
+          coord source = 2;
+        }
+        """)
+        self.output += out + '\n'
 
 
     def _test_render_global_type(self):
