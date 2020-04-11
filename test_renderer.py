@@ -281,6 +281,6 @@ class TestRender(unittest.TestCase):
         sut = Renderer(ns)
         
         for e in root:
-            print( 'rendering line '+str(e.sourceline)+':', e.get(f'{ns}meta'), e.get(f'type-name') )
+            print( 'line '+str(e.sourceline)+':', e.get(f'{ns}meta'), e.get(f'type-name') )
             out = sut.render(e)
             self.output += out + '\n'

@@ -26,6 +26,14 @@ class Renderer:
     def is_primitive_type(typ):
         return typ in Renderer.TYPES.keys()
 
+    def get_name(self, xml, value):
+        name = xml.get('name')
+        if not name:
+            name = xml.get(f'{self.ns}anon-name')
+        if not name:
+            name = 'anon_' + str(value)
+        return name           
+        
     
     # enumerations
 
@@ -34,25 +42,23 @@ class Renderer:
             tname = xml.get('type-name')
         assert tname
         out = 'enum ' + tname + ' {\n'
-        count = 0
+        value = 0
         ident = '  '
         for item in xml.findall(itype):
-            name = item.get('name')
-            if not name:
-                name = 'anon_' + str(count)
+            name = self.get_name(item, value)
             assert name
-            out += ident + name + ' = ' + str(count) + ';'
+            out += ident + name + ' = ' + str(value) + ';'
             comment = item.get('comment')
             if comment:
                 out += ' /* ' + comment + '*/'
             out += '\n'
-            count += 1
+            value += 1
         out += '}\n'
         return out
 
     def render_enum(self, xml, value=1):
         tname = xml.get(f'{self.ns}typedef-name')
-        name = xml.get('name')
+        name = self.get_name(xml, value)
         assert tname
         assert name
         out = self.render_enum_type(xml, tname)
@@ -70,11 +76,7 @@ class Renderer:
             tname = Renderer.convert_type(xml.get('type-name'))
         if not tname:
             tname = 'bytes'
-        name = xml.get('name')
-        if not name:
-            name = 'anon_' + str(value)
-        assert name
-        assert tname
+        name = self.get_name(xml, value)
         out = 'repeated ' + tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
 
@@ -84,22 +86,14 @@ class Renderer:
             styp = Renderer.convert_type(styp)
         if not styp:
             styp = 'T_anon'
-        name = xml.get('name')
-        if not name:
-            name = xml.get(f'{self.ns}anon-name')
-        if not name:
-            name = 'anon_' + str(value)
+        name = self.get_name(xml, value)
         return styp + ' ' + name + ' = ' + str(value) + ';\n'
 
     def render_pointer(self, xml, value=1):
         tname = xml.get('type-name')
         if not tname:
             tname = 'bytes'
-        name = xml.get('name')
-        if not name:
-            name = xml.get(f'{self.ns}anon-name')
-        assert name
-        assert tname
+        name = self.get_name(xml, value)
         if not Renderer.is_primitive_type(tname):
             self.imports.append(tname)
         out = tname + ' ' + name + ' = ' + str(value) + ';\n'
@@ -107,11 +101,8 @@ class Renderer:
 
     def render_global(self, xml, value=1):
         tname = xml.get('type-name')
-        name = xml.get('name')
         assert tname
-        if not name:
-            name = xml.get(f'{self.ns}anon-name')
-        assert name
+        name = self.get_name(xml, value)
         self.imports.append(tname)
         out = tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
@@ -131,11 +122,11 @@ class Renderer:
         if not tname:
             tname = xml.get('type-name')
         out  = 'message ' + tname + ' {\n'
-        count = 1
+        value = 1
         ident = '  '
         for item in xml.findall(f'{self.ns}field'):
-            out += ident + self.render_field(item, count)
-            count += 1
+            out += ident + self.render_field(item, value)
+            value += 1
         out += '}\n'
         return out
 
@@ -161,7 +152,56 @@ class Renderer:
         tname = xml.get(f'{self.ns}typedef-name')
         if tname:
             name = xml.get('name')
-            assert name
+        name = self.get_name(xml, value)
+        self.imports.append(tname)
+        out = tname + ' ' + name + ' = ' + str(value) + ';\n'
+        return out
+
+    def render_field(self, xml, value):
+        meta = xml.get(f'{self.ns}meta')
+        assert meta
+        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
+            return self.render_simple_field(xml, value)
+        else:
+            return self.render(xml, value)
+    
+    
+    # structs
+
+    def render_struct_type(self, xml, tname=None):
+        if not tname:
+            tname = xml.get('type-name')
+        out  = 'message ' + tname + ' {\n'
+        value = 1
+        ident = '  '
+        for item in xml.findall(f'{self.ns}field'):
+            out += ident + self.render_field(item, value)
+            value += 1
+        out += '}\n'
+        return out
+
+    def render_anon_compound(self, xml, tname=None):
+        if not tname:
+            tname = 'T_anon'
+        return self.render_struct_type(xml, tname)
+
+    def render_compound(self, xml, value=1):
+        subtype = xml.get(f'{self.ns}subtype')
+        if subtype == 'enum':
+            return self.render_enum(xml, value)
+        if subtype == 'bitfield':
+            return self.render_bitfield(xml, value)
+        
+        anon = xml.get(f'{self.ns}anon-compound')
+        if anon == 'true':
+            union = xml.get('is-union')
+            if union == 'true':
+                return self.render_union(xml, 'anon')
+            return self.render_anon_compound(xml)
+        
+        tname = xml.get(f'{self.ns}typedef-name')
+        if tname:
+            name = self.get_name(xml, value)
             out = self.render_struct_type(xml, tname)
             out += tname + ' ' + name + ' = ' + str(value) + ';\n'
             return out
@@ -172,7 +212,7 @@ class Renderer:
     # unions
 
     def render_union(self, xml, tname):
-        count = 1
+        value = 1
         ident = '  '
         fields = ''
         predecl = []
@@ -180,8 +220,8 @@ class Renderer:
             meta = item.get(f'{self.ns}meta')
             if meta == 'compound':
                 predecl += self.render_anon_compound(item)
-            fields += ident + self.render_simple_field(item, count)
-            count += 1
+            fields += ident + self.render_simple_field(item, value)
+            value += 1
         out = ''
         if predecl:
             for decl in predecl:
@@ -205,11 +245,8 @@ class Renderer:
     
     def render_bitfield(self, xml, value):
         tname = xml.get(f'{self.ns}typedef-name')
-        name = xml.get('name')
-        if not name:
-            name = xml.get(f'{self.ns}anon-name')
         assert tname
-        assert name
+        name = self.get_name(xml, value)
         out = self.render_bitfield_type(xml, tname)
         out += tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
