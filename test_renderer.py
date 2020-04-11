@@ -20,7 +20,7 @@ class TestRender(unittest.TestCase):
             fil.write('syntax = "proto3";\n')
             
     def setUp(self):
-        self.sut = Renderer('{ns}')
+        self.sut = Renderer('ns')
 
     def tearDown(self):
         with open(OUTPUT_FNAME, 'a') as fil:
@@ -203,7 +203,25 @@ class TestRender(unittest.TestCase):
         """)
         self.output += out + '\n'
 
-    def test_render_union(self):
+    def test_render_compound_union(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+          <ld:field name="data" is-union="true" init-value="-1" ld:level="1" ld:meta="compound" ld:typedef-name="T_data" ld:in-union="true">
+            <ld:field name="glorify_hf" ref-target="historical_figure" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+            <ld:field name="artifact_is_heirloom_of_family_hfid" ref-target="historical_figure" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>"historical_entity" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          </ld:field>
+        </ld:data-definition>
+        """        
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertStructEqual(out, """
+        oneof data {
+          int32 glorify_hf = 1;
+          int32 artifact_is_heirloom_of_family_hfid = 2;
+        }
+        """)
+
+    def test_render_anon_compound_union(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
           <ld:field ld:anon-compound="true" is-union="true" ld:level="3" ld:meta="compound">

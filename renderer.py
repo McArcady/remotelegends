@@ -6,7 +6,7 @@ import traceback
 class Renderer:
 
     def __init__(self, namespace):
-        self.ns = namespace
+        self.ns = '{'+namespace+'}'
         self.imports = []
     
     TYPES = defaultdict(lambda: None, {
@@ -26,34 +26,37 @@ class Renderer:
     def is_primitive_type(typ):
         return typ in Renderer.TYPES.keys()
 
-    def get_name(self, xml, value):
+    def get_name(self, xml, value=1):
         name = xml.get('name')
         if not name:
             name = xml.get(f'{self.ns}anon-name')
         if not name:
             name = 'anon_' + str(value)
-        return name           
+        return name
+
+    def ident(self, xml):
+        ident = xml.get(f'{self.ns}level') or 1
+        return '  ' * int(ident)
         
     
     # enumerations
 
-    def render_enum_type(self, xml, tname=None, itype='enum-item'):
+    def render_enum_type(self, xml, tname=None, itype='enum-item', extra_ident=''):
         if not tname:            
             tname = xml.get('type-name')
         assert tname
-        out = 'enum ' + tname + ' {\n'
+        out = self.ident(xml) + extra_ident + 'enum ' + tname + ' {\n'
         value = 0
-        ident = '  '
         for item in xml.findall(itype):
             name = self.get_name(item, value)
             assert name
-            out += ident + name + ' = ' + str(value) + ';'
+            out += self.ident(item) + extra_ident + name + ' = ' + str(value) + ';'
             comment = item.get('comment')
             if comment:
                 out += ' /* ' + comment + '*/'
             out += '\n'
             value += 1
-        out += '}\n'
+        out += self.ident(xml) + extra_ident + '}\n'
         return out
 
     def render_enum(self, xml, value=1):
@@ -62,7 +65,7 @@ class Renderer:
         assert tname
         assert name
         out = self.render_enum_type(xml, tname)
-        out += tname + ' ' + name + ' = ' + str(value) + ';\n'
+        out += self.ident(xml) + tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
 
     
@@ -114,18 +117,17 @@ class Renderer:
             return self.render_simple_field(xml, value)
         else:
             return self.render(xml, value)
-    
+        
     
     # structs
 
     def render_struct_type(self, xml, tname=None):
         if not tname:
             tname = xml.get('type-name')
-        out  = 'message ' + tname + ' {\n'
+        out  = self.ident(xml) + 'message ' + tname + ' {\n'
         value = 1
-        ident = '  '
         for item in xml.findall(f'{self.ns}field'):
-            out += ident + self.render_field(item, value)
+            out += self.ident(item) + self.render_field(item, value)
             value += 1
         out += '}\n'
         return out
@@ -143,60 +145,12 @@ class Renderer:
             return self.render_bitfield(xml, value)
         
         anon = xml.get(f'{self.ns}anon-compound')
+        union = xml.get('is-union')
+        if union == 'true':
+            if anon == 'true':
+                return self.render_union(xml, 'anon', value)
+            return self.render_union(xml, self.get_name(xml), value)
         if anon == 'true':
-            union = xml.get('is-union')
-            if union == 'true':
-                return self.render_union(xml, 'anon')
-            return self.render_anon_compound(xml)
-        
-        tname = xml.get(f'{self.ns}typedef-name')
-        if tname:
-            name = xml.get('name')
-        name = self.get_name(xml, value)
-        self.imports.append(tname)
-        out = tname + ' ' + name + ' = ' + str(value) + ';\n'
-        return out
-
-    def render_field(self, xml, value):
-        meta = xml.get(f'{self.ns}meta')
-        assert meta
-        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
-            return self.render_simple_field(xml, value)
-        else:
-            return self.render(xml, value)
-    
-    
-    # structs
-
-    def render_struct_type(self, xml, tname=None):
-        if not tname:
-            tname = xml.get('type-name')
-        out  = 'message ' + tname + ' {\n'
-        value = 1
-        ident = '  '
-        for item in xml.findall(f'{self.ns}field'):
-            out += ident + self.render_field(item, value)
-            value += 1
-        out += '}\n'
-        return out
-
-    def render_anon_compound(self, xml, tname=None):
-        if not tname:
-            tname = 'T_anon'
-        return self.render_struct_type(xml, tname)
-
-    def render_compound(self, xml, value=1):
-        subtype = xml.get(f'{self.ns}subtype')
-        if subtype == 'enum':
-            return self.render_enum(xml, value)
-        if subtype == 'bitfield':
-            return self.render_bitfield(xml, value)
-        
-        anon = xml.get(f'{self.ns}anon-compound')
-        if anon == 'true':
-            union = xml.get('is-union')
-            if union == 'true':
-                return self.render_union(xml, 'anon')
             return self.render_anon_compound(xml)
         
         tname = xml.get(f'{self.ns}typedef-name')
@@ -207,27 +161,25 @@ class Renderer:
             return out
 
         raise Exception('not supported: '+meta+'/'+subtype)
-        
+    
 
     # unions
 
-    def render_union(self, xml, tname):
-        value = 1
-        ident = '  '
+    def render_union(self, xml, tname, value=1):
         fields = ''
         predecl = []
         for item in xml.findall(f'{self.ns}field'):
             meta = item.get(f'{self.ns}meta')
             if meta == 'compound':
                 predecl += self.render_anon_compound(item)
-            fields += ident + self.render_simple_field(item, value)
+            fields += self.ident(item) + self.render_simple_field(item, value)
             value += 1
         out = ''
         if predecl:
             for decl in predecl:
                 out += decl
         out += 'oneof ' + tname + ' {\n'
-        out += fields + '}'
+        out += fields + self.ident(xml) + '}\n'
         return out
 
     
@@ -237,18 +189,19 @@ class Renderer:
         if not tname:
             tname = xml.get('type-name')
         assert tname
-        out  = 'message ' + tname + ' {\n'
-        out += self.render_enum_type(xml, 'mask', itype=f'{self.ns}field')
-        out += 'fixed32 flags = 1;\n'
-        out += '}\n'
+        ident = self.ident(xml)
+        out  = ident + 'message ' + tname + ' {\n'
+        out += self.render_enum_type(xml, 'mask', itype=f'{self.ns}field', extra_ident='  ')
+        out += ident + '  ' + 'fixed32 flags = 1;\n'
+        out += ident + '}\n'
         return out
     
     def render_bitfield(self, xml, value):
         tname = xml.get(f'{self.ns}typedef-name')
         assert tname
         name = self.get_name(xml, value)
-        out = self.render_bitfield_type(xml, tname)
-        out += tname + ' ' + name + ' = ' + str(value) + ';\n'
+        out  = self.render_bitfield_type(xml, tname)
+        out += self.ident(xml) + tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
         
 
