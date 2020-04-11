@@ -291,6 +291,30 @@ class TestRender(unittest.TestCase):
         T_anon_3 anon_3 = 1;
         """)
 
+    def test_render_anon_bitfield(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:subtype="bitfield" name="gems_use" ld:level="1" ld:meta="compound">
+          <ld:field name="noun" ld:level="2" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+          <ld:field name="adj" ld:level="2" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+          <ld:field name="adj_noun" ld:level="2" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertStructEqual(out, """
+        message T_gems_use {
+          enum mask {
+            noun = 0;
+            adj = 1;
+            adj_noun = 2;
+          }
+          fixed32 flags = 1;
+        }
+        T_gems_use gems_use = 1;
+        """)
+
     def test_render_class_type(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -316,7 +340,7 @@ class TestRender(unittest.TestCase):
         self.output += out + '\n'
 
 
-    def _test_render_global_type(self):
+    def _test_render_global_types(self):
         tree = etree.parse('codegen/codegen.out.xml')
         root = tree.getroot()
         ns = re.match(r'{.*}', root.tag).group(0)

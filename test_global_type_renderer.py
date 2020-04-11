@@ -52,7 +52,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
           T_modification modification = 3;
         }
         """
-            
+    
     def setUp(self):
         pass
 

@@ -34,6 +34,12 @@ class Renderer:
             name = 'anon_' + str(value)
         return name
 
+    def get_typedef_name(self, xml, name):
+        tname = xml.get(f'{self.ns}typedef-name')
+        if not tname:
+            tname = 'T_' + name
+        return tname
+
     def ident(self, xml):
         ident = xml.get(f'{self.ns}level') or 1
         return '  ' * int(ident)
@@ -60,10 +66,8 @@ class Renderer:
         return out
 
     def render_enum(self, xml, value=1):
-        tname = xml.get(f'{self.ns}typedef-name')
         name = self.get_name(xml, value)
-        assert tname
-        assert name
+        tname = self.get_typedef_name(xml, name)
         out = self.render_enum_type(xml, tname)
         out += self.ident(xml) + tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
@@ -153,14 +157,11 @@ class Renderer:
         if anon == 'true':
             return self.render_anon_compound(xml)
         
-        tname = xml.get(f'{self.ns}typedef-name')
-        if tname:
-            name = self.get_name(xml, value)
-            out = self.render_struct_type(xml, tname)
-            out += tname + ' ' + name + ' = ' + str(value) + ';\n'
-            return out
-
-        raise Exception('not supported: '+meta+'/'+subtype)
+        name = self.get_name(xml, value)
+        tname = self.get_typedef_name(xml, name)
+        out = self.render_struct_type(xml, tname)
+        out += tname + ' ' + name + ' = ' + str(value) + ';\n'
+        return out
     
 
     # unions
@@ -198,9 +199,8 @@ class Renderer:
         return out
     
     def render_bitfield(self, xml, value):
-        tname = xml.get(f'{self.ns}typedef-name')
-        assert tname
         name = self.get_name(xml, value)
+        tname = self.get_typedef_name(xml, name)
         out  = self.render_bitfield_type(xml, tname)
         out += self.ident(xml) + tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
@@ -213,8 +213,9 @@ class Renderer:
         try:
             meta = xml.get(f'{self.ns}meta')
             if not meta:
-                return '// ignored global-object: %s' % (xml.get('name'));
-            elif meta == 'bitfield-type':
+                # try compound
+                meta = 'compound'
+            if meta == 'bitfield-type':
                 return self.render_bitfield_type(xml)
             elif meta == 'class-type':
                 return self.render_struct_type(xml)
