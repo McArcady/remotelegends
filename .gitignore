@@ -1,0 +1,6 @@
+*.xml
+codegen
+*.pb
+*.pyc
+*.proto
+*.pb
