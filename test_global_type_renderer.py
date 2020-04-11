@@ -16,27 +16,9 @@ class TestGlobalTypeRenderer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pass
-            
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        with open(OUTPUT_FNAME, 'w') as fil:
-            fil.write(self.output)
-
-    @classmethod
-    def tearDownClass(cls):
-        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (OUTPUT_FNAME, OUTPUT_FNAME)], shell=True)
-
-    def assertStructEqual(self, str1, str2):
-        self.assertEqual(''.join(str1.split()), ''.join(str2.split()), str1+'/'+str2)
-
-    
-    def test_render(self):
-        XML = """
+        cls.XML = """
         <ld:data-definition xmlns:ld="ns">
-        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="history_event_reason_info">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="history">
           <ld:field ld:subtype="enum" name="type" type-name="history_event_reason" base-type="int32_t" ld:level="1" ld:meta="global"/>
           <ld:field name="data" is-union="true" init-value="-1" ld:level="1" ld:meta="compound" ld:typedef-name="T_data" ld:in-union="true">
             <ld:field name="glorify_hf" ref-target="historical_figure" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
@@ -49,16 +31,12 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         </ld:global-type>        
         </ld:data-definition>
         """
-        root = etree.fromstring(XML)
-        sut = GlobalTypeRenderer(root[0], 'ns')
-        self.assertEqual(sut.get_type_name(), 'history_event_reason_info')
-        out = sut.render()
-        # FIXME: value of modification should be 4
-        self.assertStructEqual(out, """
+        # FIXME: value of field modification should be 4
+        cls.PROTO = """
         syntax = "proto3";
         import "history_event_reason.proto";
 
-        message history_event_reason_info {
+        message history {
           history_event_reason type = 1;
           oneof data {
             int32 glorify_hf = 2;
@@ -73,5 +51,34 @@ class TestGlobalTypeRenderer(unittest.TestCase):
           }
           T_modification modification = 3;
         }
-        """)
+        """
+            
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        with open(OUTPUT_FNAME, 'w') as fil:
+            fil.write(self.output)
+
+    @classmethod
+    def tearDownClass(cls):
+        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (OUTPUT_FNAME, OUTPUT_FNAME)], shell=True)
+
+    def assertStructEqual(self, str1, str2):
+        self.assertEqual(''.join(str1.split()), ''.join(str2.split()), str1+'/'+str2)
+    
+    def test_render(self):
+        root = etree.fromstring(self.XML)
+        sut = GlobalTypeRenderer(root[0], 'ns')
+        self.assertEqual(sut.get_type_name(), 'history')
+        out = sut.render()
+        self.assertStructEqual(out, self.PROTO)
         self.output += out
+
+    def test_render_to_file(self):
+        root = etree.fromstring(self.XML)
+        sut = GlobalTypeRenderer(root[0], 'ns')
+        fname = sut.render_to_file('./')
+        self.assertEqual(fname, 'history.proto')
+        with open(fname, 'r') as fil:
+            self.assertStructEqual(fil.read(), self.PROTO)

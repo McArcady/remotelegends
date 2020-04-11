@@ -191,6 +191,7 @@ class Renderer:
         assert tname
         ident = self.ident(xml)
         out  = ident + 'message ' + tname + ' {\n'
+        # FIXME: values of enum shall be bit-masks
         out += self.render_enum_type(xml, 'mask', itype=f'{self.ns}field', extra_ident='  ')
         out += ident + '  ' + 'fixed32 flags = 1;\n'
         out += ident + '}\n'
