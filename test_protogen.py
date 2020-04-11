@@ -28,7 +28,7 @@ class TestRender(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        subprocess.check_call(['protoc -I. -o%s.bp  %s' % (OUTPUT_FNAME, OUTPUT_FNAME)], shell=True)
+        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (OUTPUT_FNAME, OUTPUT_FNAME)], shell=True)
 
     def assertStructEqual(self, str1, str2):
         self.assertEqual(''.join(str1.split()), ''.join(str2.split()), str1+'/'+str2)

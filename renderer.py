@@ -59,15 +59,6 @@ class Renderer:
         out += tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
 
-    def render_global_enum(self, xml, value=1):
-        tname = xml.get('type-name')
-        name = xml.get('name')
-        assert tname
-        assert name
-        self.imports.append(tname)
-        out = tname + ' ' + name + ' = ' + str(value) + ';\n'
-        return out
-
     
     # fields & containers
     
@@ -100,14 +91,6 @@ class Renderer:
             name = 'anon_' + str(value)
         return styp + ' ' + name + ' = ' + str(value) + ';\n'
 
-    def render_field(self, xml, value):
-        meta = xml.get(f'{self.ns}meta')
-        assert meta
-        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
-            return self.render_simple_field(xml, value)
-        else:
-            return self.render(xml, value)
-
     def render_pointer(self, xml, value=1):
         tname = xml.get('type-name')
         if not tname:
@@ -122,6 +105,25 @@ class Renderer:
         out = tname + ' ' + name + ' = ' + str(value) + ';\n'
         return out
 
+    def render_global(self, xml, value=1):
+        tname = xml.get('type-name')
+        name = xml.get('name')
+        assert tname
+        if not name:
+            name = xml.get(f'{self.ns}anon-name')
+        assert name
+        self.imports.append(tname)
+        out = tname + ' ' + name + ' = ' + str(value) + ';\n'
+        return out
+
+    def render_field(self, xml, value):
+        meta = xml.get(f'{self.ns}meta')
+        assert meta
+        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
+            return self.render_simple_field(xml, value)
+        else:
+            return self.render(xml, value)
+    
     
     # structs
 
@@ -216,12 +218,15 @@ class Renderer:
     # main renderer
 
     def render(self, xml, value=1):
+        # TODO: handle comments for all types
         try:
             meta = xml.get(f'{self.ns}meta')
-            if meta == 'bitfield-type':
+            if not meta:
+                return '// ignored global-object: %s' % (xml.get('name'));
+            elif meta == 'bitfield-type':
                 return self.render_bitfield_type(xml)
             elif meta == 'class-type':
-                return '// ignored class-type %s' % (xml.get('type-name'));
+                return '// ignored class-type: %s' % (xml.get('type-name'));
             elif meta == 'compound':
                 return self.render_compound(xml, value)
             elif meta == 'container':
@@ -229,7 +234,7 @@ class Renderer:
             elif meta == 'enum-type':
                 return self.render_enum_type(xml)
             elif meta == 'global':
-                return self.render_global_enum(xml)
+                return self.render_global(xml)
             elif meta == 'pointer':
                 return self.render_pointer(xml)
             elif meta == 'static-array':
