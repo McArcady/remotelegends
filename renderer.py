@@ -15,6 +15,7 @@ class Renderer:
         'int16_t': 'int32',
         'int32_t': 'int32',
         'stl-string': 'string',
+        'padding': 'bytes',
         }.items()})
 
     @staticmethod
@@ -28,17 +29,23 @@ class Renderer:
     
     # enumerations
 
-    def render_enum_type(self, xml, tname=None):
+    def render_enum_type(self, xml, tname=None, itype='enum-item'):
         if not tname:            
             tname = xml.get('type-name')
         assert tname
         out = 'enum ' + tname + ' {\n'
         count = 0
         ident = '  '
-        for item in xml.findall('enum-item'):
+        for item in xml.findall(itype):
             name = item.get('name')
+            if not name:
+                name = 'anon_' + str(count)
             assert name
-            out += ident + name + ' = ' + str(count) + ';\n'
+            out += ident + name + ' = ' + str(count) + ';'
+            comment = item.get('comment')
+            if comment:
+                out += ' /* ' + comment + '*/'
+            out += '\n'
             count += 1
         out += '}\n'
         return out
@@ -73,6 +80,8 @@ class Renderer:
         if not tname:
             tname = 'bytes'
         name = xml.get('name')
+        if not name:
+            name = 'anon_' + str(value)
         assert name
         assert tname
         out = 'repeated ' + tname + ' ' + name + ' = ' + str(value) + ';\n'
@@ -88,16 +97,16 @@ class Renderer:
         if not name:
             name = xml.get(f'{self.ns}anon-name')
         if not name:
-            name = 'anon'
+            name = 'anon_' + str(value)
         return styp + ' ' + name + ' = ' + str(value) + ';\n'
 
     def render_field(self, xml, value):
         meta = xml.get(f'{self.ns}meta')
         assert meta
-        if meta != 'primitive' and meta != 'number':
-            return self.render(xml, value)
-        else:
+        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
             return self.render_simple_field(xml, value)
+        else:
+            return self.render(xml, value)
 
     def render_pointer(self, xml, value=1):
         tname = xml.get('type-name')
@@ -137,6 +146,8 @@ class Renderer:
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'enum':
             return self.render_enum(xml, value)
+        if subtype == 'bitfield':
+            return self.render_bitfield(xml, value)
         
         anon = xml.get(f'{self.ns}anon-compound')
         if anon == 'true':
@@ -176,14 +187,42 @@ class Renderer:
         out += 'oneof ' + tname + ' {\n'
         out += fields + '}'
         return out
+
     
+    # bitfields
+    
+    def render_bitfield_type(self, xml, tname=None):
+        if not tname:
+            tname = xml.get('type-name')
+        assert tname
+        out  = 'message ' + tname + ' {\n'
+        out += self.render_enum_type(xml, 'mask', itype=f'{self.ns}field')
+        out += 'fixed32 flags = 1;\n'
+        out += '}\n'
+        return out
+    
+    def render_bitfield(self, xml, value):
+        tname = xml.get(f'{self.ns}typedef-name')
+        name = xml.get('name')
+        if not name:
+            name = xml.get(f'{self.ns}anon-name')
+        assert tname
+        assert name
+        out = self.render_bitfield_type(xml, tname)
+        out += tname + ' ' + name + ' = ' + str(value) + ';\n'
+        return out
+        
 
     # main renderer
 
     def render(self, xml, value=1):
         try:
             meta = xml.get(f'{self.ns}meta')
-            if meta == 'compound':
+            if meta == 'bitfield-type':
+                return self.render_bitfield_type(xml)
+            elif meta == 'class-type':
+                return '// ignored class-type %s' % (xml.get('type-name'));
+            elif meta == 'compound':
                 return self.render_compound(xml, value)
             elif meta == 'container':
                 return self.render_container(xml, value)
@@ -193,11 +232,13 @@ class Renderer:
                 return self.render_global_enum(xml)
             elif meta == 'pointer':
                 return self.render_pointer(xml)
+            elif meta == 'static-array':
+                return self.render_container(xml, value)
             elif meta == 'struct-type':
                 return self.render_struct_type(xml)
         except Exception as e:
             _,value,tb = sys.exc_info()
-            print('error rendering element %s (meta=%s) at line %d:' % (xml.tag, meta, xml.sourceline))
+            print('error rendering element %s (meta=%s) at line %d: %s' % (xml.tag, meta if meta else '<unknown>', xml.sourceline, e))
             traceback.print_tb(tb)
             return ""
-        raise Exception('no supported: element '+xml.tag+': meta='+str(meta))
+        raise Exception('not supported: element '+xml.tag+': meta='+str(meta))

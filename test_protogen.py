@@ -224,8 +224,53 @@ class TestRender(unittest.TestCase):
         }
         oneof anon {
           int32 fps = 1;
-          T_anon anon = 2;
+          T_anon anon_2 = 2;
         }
+        """)
+
+    def test_render_bitfield_type(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="bitfield-type" ld:level="0" type-name="announcement_flags">
+          <ld:field name="DO_MEGA" comment="BOX" ld:level="1" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+          <ld:field name="PAUSE" comment="P" ld:level="1" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+          <ld:field name="RECENTER" comment="R" ld:level="1" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertStructEqual(out, """
+        message announcement_flags {
+          enum mask {
+            DO_MEGA = 0; /* BOX */
+            PAUSE = 1; /* P */
+            RECENTER = 2; /* R */
+          }
+          fixed32 flags = 1;
+        }
+        """)
+
+    def test_render_bitfield(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:subtype="bitfield" since="v0.42.01" ld:level="1" ld:meta="compound" ld:anon-name="anon_3" ld:typedef-name="T_anon_3">
+          <ld:field name="petition_not_accepted" comment="this gets unset by accepting a petition" ld:level="2" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+          <ld:field name="convicted_accepted" comment="convicted for PositionCorruption/accepted for Location" ld:level="2" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertStructEqual(out, """
+        message T_anon_3 {
+          enum mask {
+            petition_not_accepted = 0; /* this gets unset by accepting a petition */
+            convicted_accepted = 1; /* convicted for PositionCorruption/accepted for Location */
+          }
+          fixed32 flags = 1;
+        }
+        T_anon_3 anon_3 = 1;
         """)
 
 
@@ -236,6 +281,6 @@ class TestRender(unittest.TestCase):
         sut = Renderer(ns)
         
         for e in root:
-            print( ns, e.get(f'{ns}meta'), e.get(f'type-name') )
+            print( 'rendering line '+str(e.sourceline)+':', e.get(f'{ns}meta'), e.get(f'type-name') )
             out = sut.render(e)
             self.output += out + '\n'
