@@ -26,7 +26,8 @@ class GlobalTypeRenderer:
         try:
             rdr = Renderer(self.ns)
             typout = rdr.render(self.xml)
-            out = 'syntax = "proto3";\n'
+            out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
+            out += 'syntax = "proto3";\n'
             for imp in rdr.imports:
                 out += 'import \"%s.proto\";\n' % (imp)
             # TODO: declare package 'df'

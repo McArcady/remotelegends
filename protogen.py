@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+#
+# Generate and compile proto files with:
+# $ ./protogen.py  ../df-structures && for f in $(ls protogen/*.proto); do echo $f &&  protoc -Iprotogen/ -otest.pb $f ||  break; done
+#
 
-import copy
 import sys
 import argparse
 import re
@@ -11,7 +14,7 @@ from lxml import etree
 from global_type_renderer import GlobalTypeRenderer
 
 
-def main(argv=sys.argv):
+def main():
     
     # parse args
     parser = argparse.ArgumentParser(description='Generate proto3 from dfhack structures.')
@@ -21,7 +24,6 @@ def main(argv=sys.argv):
                         default='./protogen',
                         help='output directory (default=./protogen)')
     args = parser.parse_args()
-    print(str(args))
 
     # input dir
     indir = args.input
@@ -53,9 +55,11 @@ def main(argv=sys.argv):
         for t in transforms:
             xml = t(xml)
         ns = re.match(r'{(.*)}', xml.getroot().tag).group(1)
-        print (ns)
         xml.write(outxml)
         for item in xml.getroot():
+            if 'global-type' not in item.tag:
+                print('skipped global-type '+item.get('name'))
+                continue                      
             rdr = GlobalTypeRenderer(item, ns)
             fname = rdr.render_to_file(outdir)
             print('created %s' % (outdir+fname))

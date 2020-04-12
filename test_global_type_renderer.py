@@ -33,6 +33,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         """
         # FIXME: value of field modification should be 4
         cls.PROTO = """
+        /* THIS FILE WAS GENERATED. DO NOT EDIT. */
         syntax = "proto3";
         import "history_event_reason.proto";
 
@@ -44,25 +45,14 @@ class TestGlobalTypeRenderer(unittest.TestCase):
           }
           message T_modification {
             enum mask {
-              dungeon = 0;
-              fortifications = 1;
+              dungeon = 0x0;
+              fortifications = 0x1;
             }
             fixed32 flags = 1;
           }
-          T_modification modification = 3;
+          T_modification modification = 4;
         }
         """
-    
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        with open(OUTPUT_FNAME, 'w') as fil:
-            fil.write(self.output)
-
-    @classmethod
-    def tearDownClass(cls):
-        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (OUTPUT_FNAME, OUTPUT_FNAME)], shell=True)
 
     def assertStructEqual(self, str1, str2):
         self.assertEqual(''.join(str1.split()), ''.join(str2.split()), str1+'/'+str2)
@@ -73,7 +63,6 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         self.assertEqual(sut.get_type_name(), 'history')
         out = sut.render()
         self.assertStructEqual(out, self.PROTO)
-        self.output += out
 
     def test_render_to_file(self):
         root = etree.fromstring(self.XML)
@@ -82,3 +71,4 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         self.assertEqual(fname, 'history.proto')
         with open(fname, 'r') as fil:
             self.assertStructEqual(fil.read(), self.PROTO)
+        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (fname, fname)], shell=True)
