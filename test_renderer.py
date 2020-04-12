@@ -44,10 +44,33 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         enum ui_advmode_menu {
           Default = 0;
           Look = 1;
+        }
+        """)
+        self.output += out + '\n'
+    
+    def test_render_enum_type_with_values(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="enum-type" ld:level="0" type-name="conflict_level">
+          <enum-item name="None" value="-1"/>
+          <enum-item name="Encounter"/>
+          <enum-item name="Horseplay"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
+        self.assertStructEqual(out, """
+        enum conflict_level {
+          Encounter = 0;
+          Horseplay = 1;
+          conflict_level_None = -1;
         }
         """)
         self.output += out + '\n'
@@ -63,6 +86,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         enum T_state {
           started = 0;
@@ -87,15 +111,35 @@ class TestRender(unittest.TestCase):
     def test_render_container(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
-          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" type-name="int16_t" name="talk_choices" ld:is-container="true"><ld:item ld:level="2" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/></ld:field>
+          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" type-name="int16_t" name="talk_choices" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+        </ld:field>
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         repeated int32 talk_choices = 1;
         """)
-        
+    
+    def test_render_container_pointer(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="name_singular" pointer-type="stl-string" ld:is-container="true">
+          <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="stl-string">
+            <ld:item ld:level="3" ld:meta="primitive" ld:subtype="stl-string"/>
+          </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
+        self.assertStructEqual(out, """
+        repeated string name_singular = 1;
+        """)
+    
     def test_render_struct_type_with_primitive_fields(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -107,6 +151,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message conversation1 {
           string conv_title = 1;
@@ -132,6 +177,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message conversation2 {
           string conv_title = 1;
@@ -176,6 +222,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(list(self.sut.imports), ['entity_event'])
         self.assertStructEqual(out, """
         message T_unk {
           entity_event event = 1;
@@ -187,21 +234,21 @@ class TestRender(unittest.TestCase):
     def test_render_anon_compound(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
-          <ld:field ld:anon-compound="true" ld:level="3" ld:meta="compound">
-            <ld:field name="x" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
-            <ld:field name="y" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          <ld:field ld:anon-compound="true" ld:level="1" ld:meta="compound">
+            <ld:field name="x" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+            <ld:field ld:subtype="enum" base-type="int16_t" name="item_type" type-name="item_type" ld:level="2" ld:meta="global"/>
           </ld:field>
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(list(self.sut.imports), ['item_type'])
         self.assertStructEqual(out, """
         message T_anon {
           int32 x = 1;
-          int32 y = 2;
+          item_type item_type = 2;
         }
         """)
-        self.output += out + '\n'
 
     def test_render_compound_union(self):
         XML = """
@@ -214,6 +261,7 @@ class TestRender(unittest.TestCase):
         """        
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         oneof data {
           int32 glorify_hf = 1;
@@ -235,6 +283,7 @@ class TestRender(unittest.TestCase):
         """        
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message T_anon {
           int32 x = 1;
@@ -258,6 +307,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message announcement_flags {
           enum mask {
@@ -268,6 +318,7 @@ class TestRender(unittest.TestCase):
           fixed32 flags = 1;
         }
         """)
+        self.output += out + '\n'
 
     def test_render_bitfield(self):
         XML = """
@@ -280,6 +331,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message T_anon_3 {
           enum mask {
@@ -303,6 +355,7 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message T_gems_use {
           enum mask {
@@ -337,7 +390,6 @@ class TestRender(unittest.TestCase):
           coord source = 2;
         }
         """)
-        self.output += out + '\n'
 
 
     def _test_render_global_types(self):
