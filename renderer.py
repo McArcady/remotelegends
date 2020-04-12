@@ -81,7 +81,7 @@ class Renderer:
             out += ' /* ' + comment + '*/'
         return out + '\n'
 
-    def render_enum_type(self, xml, tname=None, itype='enum-item', prefix=None, extra_ident=''):
+    def render_enum_type(self, xml, tname=None, prefix=None, extra_ident=''):
         if not tname:            
             tname = xml.get('type-name')
         assert tname
@@ -90,7 +90,7 @@ class Renderer:
             prefix = tname + '_'
         value = 0
         postdecl = []
-        for item in xml.findall(itype):
+        for item in xml.findall('enum-item'):
             itemv = item.get('value')
             if itemv and int(itemv) < 0:
                 postdecl.append(self._render_enum_item(item, tname, int(itemv), prefix))
@@ -240,6 +240,21 @@ class Renderer:
 
     
     # bitfields
+
+    def render_bitfield_masks(self, xml):
+        out = self.ident(xml) + 'enum mask {\n'
+        value = 0
+        for item in xml.findall(f'{self.ns}field'):
+            out += self.ident(xml) + '  %s = 0x%x;' % (
+                self.get_name(item,value), value
+            )
+            comment = item.get('comment')
+            if comment:
+                out += ' /* ' + comment + '*/'
+            out += '\n'
+            value += 1
+        out += self.ident(xml) + '}\n'
+        return out
     
     def render_bitfield_type(self, xml, tname=None):
         if not tname:
@@ -248,7 +263,7 @@ class Renderer:
         ident = self.ident(xml)
         out  = ident + 'message ' + tname + ' {\n'
         # FIXME: values of enum shall be bit-masks
-        out += self.render_enum_type(xml, 'mask', itype=f'{self.ns}field', extra_ident='  ', prefix='')
+        out += self.render_bitfield_masks(xml)
         out += ident + '  ' + 'fixed32 flags = 1;\n'
         out += ident + '}\n'
         return out

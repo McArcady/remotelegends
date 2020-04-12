@@ -415,9 +415,9 @@ class TestRender(unittest.TestCase):
         self.assertStructEqual(out, """
         message announcement_flags {
           enum mask {
-            DO_MEGA = 0; /* BOX */
-            PAUSE = 1; /* P */
-            RECENTER = 2; /* R */
+            DO_MEGA = 0x0; /* BOX */
+            PAUSE = 0x1; /* P */
+            RECENTER = 0x2; /* R */
           }
           fixed32 flags = 1;
         }
@@ -439,8 +439,8 @@ class TestRender(unittest.TestCase):
         self.assertStructEqual(out, """
         message T_anon_3 {
           enum mask {
-            petition_not_accepted = 0; /* this gets unset by accepting a petition */
-            convicted_accepted = 1; /* convicted for PositionCorruption/accepted for Location */
+            petition_not_accepted = 0x0; /* this gets unset by accepting a petition */
+            convicted_accepted = 0x1; /* convicted for PositionCorruption/accepted for Location */
           }
           fixed32 flags = 1;
         }
@@ -463,9 +463,9 @@ class TestRender(unittest.TestCase):
         self.assertStructEqual(out, """
         message T_gems_use {
           enum mask {
-            noun = 0;
-            adj = 1;
-            adj_noun = 2;
+            noun = 0x0;
+            adj = 0x1;
+            adj_noun = 0x2;
           }
           fixed32 flags = 1;
         }
