@@ -1,8 +1,6 @@
 #!/bin/python3
 
 import unittest
-import mock
-import re
 import subprocess
 from lxml import etree
 
@@ -31,12 +29,12 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         </ld:global-type>        
         </ld:data-definition>
         """
-        # FIXME: value of field modification should be 4
         cls.PROTO = """
         /* THIS FILE WAS GENERATED. DO NOT EDIT. */
         syntax = "proto3";
         import "history_event_reason.proto";
 
+        package df;
         message history {
           history_event_reason type = 1;
           oneof data {

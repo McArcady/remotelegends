@@ -58,7 +58,7 @@ def main():
         xml.write(outxml)
         for item in xml.getroot():
             if 'global-type' not in item.tag:
-                print('skipped global-type '+item.get('name'))
+                print('skipped global-object '+item.get('name'))
                 continue                      
             rdr = GlobalTypeRenderer(item, ns)
             fname = rdr.render_to_file(outdir)

@@ -5,8 +5,9 @@ import traceback
 
 class Renderer:
 
-    def __init__(self, namespace):
-        self.ns = '{'+namespace+'}'
+    def __init__(self, ns, proto_ns=None):
+        self.ns = '{'+ns+'}'
+        self.proto_ns = proto_ns
         self.imports = set()
     
     TYPES = defaultdict(lambda: None, {
@@ -24,9 +25,9 @@ class Renderer:
             's-float': 'float',
             'd-float': 'double',
             'stl-string': 'string',
-            'stl-fstream': 'bytes',
             'static-string': 'string',
             'ptr-string': 'string',
+            'stl-fstream': 'bytes',
             'padding': 'bytes',
         }.items()})
 
@@ -262,7 +263,6 @@ class Renderer:
         assert tname
         ident = self.ident(xml)
         out  = ident + 'message ' + tname + ' {\n'
-        # FIXME: values of enum shall be bit-masks
         out += self.render_bitfield_masks(xml)
         out += ident + '  ' + 'fixed32 flags = 1;\n'
         out += ident + '}\n'
@@ -294,14 +294,21 @@ class Renderer:
                 return self.render_container(xml, value)
             
             else:
+                if self.proto_ns:
+                    out = 'package ' + self.proto_ns + ';\n'
+                else:
+                    out = ''
+                comment = xml.get('comment')
+                if comment:
+                    out += '/* ' + comment + ' */\n'
                 if meta == 'bitfield-type':
-                    return self.render_bitfield_type(xml)
+                    return out + self.render_bitfield_type(xml)
                 elif meta == 'enum-type':
-                    return self.render_enum_type(xml)
+                    return out + self.render_enum_type(xml)
                 elif meta == 'class-type':
-                    return self.render_struct_type(xml)
+                    return out + self.render_struct_type(xml)
                 elif meta == 'struct-type':
-                    return self.render_struct_type(xml)
+                    return out + self.render_struct_type(xml)
             
         except Exception as e:
             _,value,tb = sys.exc_info()

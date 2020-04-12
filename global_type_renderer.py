@@ -6,8 +6,9 @@ from renderer import Renderer
 
 class GlobalTypeRenderer:
 
-    def __init__(self, xml, namespace):
-        self.ns = namespace
+    def __init__(self, xml, ns, proto_ns='df'):
+        self.ns = ns
+        self.proto_ns = proto_ns
         self.xml = xml
         assert self.xml.tag == '{%s}global-type' % (self.ns)
 
@@ -24,7 +25,7 @@ class GlobalTypeRenderer:
 
     def render(self):
         try:
-            rdr = Renderer(self.ns)
+            rdr = Renderer(self.ns, self.proto_ns)
             typout = rdr.render(self.xml)
             out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
             out += 'syntax = "proto3";\n'

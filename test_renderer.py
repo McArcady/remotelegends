@@ -475,7 +475,7 @@ class TestRender(unittest.TestCase):
     def test_render_class_type(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
-        <ld:global-type ld:meta="class-type" ld:level="0" type-name="adventure_movement_optionst">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="adventure_movement_optionst" comment="comment">
           <ld:field name="dest" type-name="coord" ld:level="1" ld:meta="global"/>
           <ld:field name="source" type-name="coord" ld:level="1" ld:meta="global"/>
           <virtual-methods>
@@ -489,6 +489,7 @@ class TestRender(unittest.TestCase):
         out = self.sut.render(root[0])
         self.assertListEqual(list(self.sut.imports), ['coord'])
         self.assertStructEqual(out, """
+        /* comment */
         message adventure_movement_optionst {
           coord dest = 1;
           coord source = 2;
