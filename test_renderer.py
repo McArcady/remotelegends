@@ -47,8 +47,8 @@ class TestRender(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         enum ui_advmode_menu {
-          Default = 0;
-          Look = 1;
+          ui_advmode_menu_Default = 0;
+          ui_advmode_menu_Look = 1;
         }
         """)
         self.output += out + '\n'
@@ -60,6 +60,7 @@ class TestRender(unittest.TestCase):
           <enum-item name="None" value="-1"/>
           <enum-item name="Encounter"/>
           <enum-item name="Horseplay"/>
+          <enum-item value="-3"/>
         </ld:global-type>
         </ld:data-definition>
         """
@@ -68,9 +69,10 @@ class TestRender(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         enum conflict_level {
-          Encounter = 0;
-          Horseplay = 1;
+          conflict_level_Encounter = 0;
+          conflict_level_Horseplay = 1;
           conflict_level_None = -1;
+          conflict_level_anon_m3 = -3;
         }
         """)
         self.output += out + '\n'
@@ -89,8 +91,8 @@ class TestRender(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         enum T_state {
-          started = 0;
-          active = 1;
+          state_started = 0;
+          state_active = 1;
         }
         T_state state = 1;
         """)
@@ -123,7 +125,7 @@ class TestRender(unittest.TestCase):
         repeated int32 talk_choices = 1;
         """)
     
-    def test_render_container_pointer(self):
+    def test_render_container_pointer_to_primitive(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="name_singular" pointer-type="stl-string" ld:is-container="true">
@@ -138,6 +140,36 @@ class TestRender(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         repeated string name_singular = 1;
+        """)
+    
+    def test_render_container_pointer_to_global(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="children" pointer-type="building" ld:is-container="true">
+          <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="building">
+          <ld:item ld:level="3" ld:meta="global" type-name="building"/>
+        </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
+        self.assertStructEqual(out, """
+        repeated int32 children_ref = 1;
+        """)
+
+    def test_render_field_type_bitfield(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+          <ld:field ld:subtype="bitfield" name="flags_0" type-name="knowledge_scholar_flags_0" ld:level="2" ld:meta="global"/>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertEqual(list(self.sut.imports), ['knowledge_scholar_flags_0'])
+        self.assertStructEqual(out, """
+        knowledge_scholar_flags_0 flags_0 = 1;
         """)
     
     def test_render_struct_type_with_primitive_fields(self):
@@ -156,6 +188,48 @@ class TestRender(unittest.TestCase):
         message conversation1 {
           string conv_title = 1;
           int32 unk_30 = 2;
+        }
+        """)
+        self.output += out + '\n'
+    
+    def test_render_struct_type_with_recursive_ref(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:subtype="df-linked-list-type" ld:level="0" type-name="job_list_link" item-type="job">
+          <ld:field name="next" type-name="job_list_link" ld:level="1" ld:meta="pointer" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="global" type-name="job_list_link"/>
+</ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        # avoid recursive import
+        self.assertEqual(len(self.sut.imports), 0)
+        self.assertStructEqual(out, """
+        message job_list_link {
+          int32 next_ref = 1;
+        }
+        """)
+        self.output += out + '\n'
+
+    def test_render_struct_type_with_list_link(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="projectile" original-name="projst" df-list-link-type="proj_list_link" df-list-link-field="link" key-field="id">
+          <ld:field ld:level="1" ld:meta="pointer" name="link" type-name="proj_list_link" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="global" type-name="proj_list_link"/>
+        </ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        # avoid recursive import
+        self.assertEqual(len(self.sut.imports), 0)
+        self.assertStructEqual(out, """
+        message projectile {
+          int32 link_ref = 1;
         }
         """)
         self.output += out + '\n'
@@ -186,8 +260,8 @@ class TestRender(unittest.TestCase):
         message conversation2 {
           string conv_title = 1;
           enum T_state {
-            started = 0;
-            active = 1;
+            state_started = 0;
+            state_active = 1;
           }
           T_state state = 2;
           oneof anon {
@@ -199,7 +273,7 @@ class TestRender(unittest.TestCase):
         """)
         self.output += out + '\n'
 
-    def test_render_struct_type_with_pointer(self):
+    def test_render_struct_type_with_container_of_pointers(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation3">
@@ -212,10 +286,28 @@ class TestRender(unittest.TestCase):
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
-        self.assertListEqual(list(self.sut.imports), ['nemesis_record'])
+        self.assertListEqual(list(self.sut.imports), [])
         self.assertStructEqual(out, """
         message conversation3 {
-          repeated nemesis_record unk_54 = 1;
+          repeated int32 unk_54_ref = 1;
+        }
+        """)
+
+    def test_render_struct_type_with_inheritance(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="adventure_item" inherits-from="adventure_item_interact_choicest">
+          <ld:field ld:level="1" ld:meta="pointer" type-name="item" ld:is-container="true"><ld:item ld:level="2" ld:meta="global" type-name="item"/></ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render(root[0])
+        self.assertListEqual(list(self.sut.imports), ['adventure_item_interact_choicest'])
+        self.assertStructEqual(out, """
+        message adventure_item {
+          adventure_item_interact_choicest parent = 1; /* parent type */
+          int32 anon_2_ref = 2;
         }
         """)
 
@@ -223,17 +315,19 @@ class TestRender(unittest.TestCase):
         XML = """
         <ld:data-definition xmlns:ld="ns">
           <ld:field name="unk" ld:level="1" ld:meta="compound" ld:typedef-name="T_unk">
-            <ld:field ld:level="2" ld:meta="pointer" name="event" type-name="entity_event" ld:is-container="true"><ld:item ld:level="3" ld:meta="global" type-name="entity_event"/></ld:field>
+            <ld:field ld:level="2" ld:meta="pointer" name="event" type-name="entity_event" ld:is-container="true">
+              <ld:item ld:level="3" ld:meta="global" type-name="entity_event"/>
+            </ld:field>
             <ld:field ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32" ld:anon-name="anon_2"/>
           </ld:field>
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
-        self.assertEqual(list(self.sut.imports), ['entity_event'])
+        self.assertEqual(list(self.sut.imports), [])
         self.assertStructEqual(out, """
         message T_unk {
-          entity_event event = 1;
+          int32 event_ref = 1;
           int32 anon_2 = 2;
         }
         T_unk unk = 1;
@@ -294,13 +388,13 @@ class TestRender(unittest.TestCase):
         out = self.sut.render(root[0])
         self.assertEqual(list(self.sut.imports), ['item_type'])
         self.assertStructEqual(out, """
-        message T_anon {
+        message T_anon_2 {
           int32 x = 1;
           int32 y = 2;
         }
         oneof anon {
           int32 fps = 1;
-          T_anon anon_2 = 2;
+          T_anon_2 anon_2 = 2;
           item_type item_type = 3;
         }
         """)
@@ -330,7 +424,7 @@ class TestRender(unittest.TestCase):
         """)
         self.output += out + '\n'
 
-    def test_render_bitfield(self):
+    def test_render_anon_bitfield(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:subtype="bitfield" since="v0.42.01" ld:level="1" ld:meta="compound" ld:anon-name="anon_3" ld:typedef-name="T_anon_3">
@@ -353,7 +447,7 @@ class TestRender(unittest.TestCase):
         T_anon_3 anon_3 = 1;
         """)
 
-    def test_render_anon_bitfield(self):
+    def test_render_bitfield(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:subtype="bitfield" name="gems_use" ld:level="1" ld:meta="compound">
