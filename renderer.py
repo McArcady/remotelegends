@@ -11,14 +11,15 @@ class Renderer:
     
     TYPES = defaultdict(lambda: None, {
         k:v for k,v in {
-        'int8_t': 'int32',
-        'int16_t': 'int32',
-        'int32_t': 'int32',
-        'uint8_t': 'uint32',
-        'uint16_t': 'uint32',
-        'uint32_t': 'uint32',
-        'stl-string': 'string',
-        'padding': 'bytes',
+            'bool': 'bool',
+            'int8_t': 'int32',
+            'int16_t': 'int32',
+            'int32_t': 'int32',
+            'uint8_t': 'uint32',
+            'uint16_t': 'uint32',
+            'uint32_t': 'uint32',
+            'stl-string': 'string',
+            'padding': 'bytes',
         }.items()})
 
     @staticmethod
@@ -117,7 +118,11 @@ class Renderer:
 
     def render_simple_field(self, xml, value=1):
         tname = xml.get(f'{self.ns}subtype')
-        tname = self._convert_tname(tname)
+        if tname == 'enum':
+            tname = xml.get('type-name')
+            self.imports.add(tname)
+        else:
+            tname = self._convert_tname(tname)
         name = self.get_name(xml, value)
         return self._render_line(xml, tname, value)
 
@@ -153,7 +158,10 @@ class Renderer:
         value = 1
         for item in xml.findall(f'{self.ns}field'):
             out += self.ident(item) + self.render_field(item, value)
-            value += 1
+            if item.get('is-union'):
+                value += len(item)
+            else:
+                value += 1
         out += self.ident(xml) + '}\n'
         return out
 
@@ -194,14 +202,13 @@ class Renderer:
             meta = item.get(f'{self.ns}meta')
             if meta == 'compound':
                 predecl += self.render_anon_compound(item)
-                fields += self.ident(item) + self._render_line(item, 'T_anon', value)
+                fields += self.ident(item) + '  ' + self._render_line(item, 'T_anon', value)
             else:
-                fields += self.ident(item) + self.render_simple_field(item, value)
+                fields += self.ident(item) + '  ' + self.render_simple_field(item, value)
             value += 1
         out = ''
-        if predecl:
-            for decl in predecl:
-                out += decl
+        for decl in predecl:
+            out += decl
         out += 'oneof ' + tname + ' {\n'
         out += fields + self.ident(xml) + '}\n'
         return out

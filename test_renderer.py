@@ -169,6 +169,10 @@ class TestRender(unittest.TestCase):
             <enum-item name="started"/>
             <enum-item name="active"/>
           </ld:field>
+          <ld:field ld:anon-compound="true" is-union="true" ld:level="1" ld:meta="compound">
+            <ld:field name="creature_id" ref-target="creature_raw" ld:level="1" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+            <ld:field name="color_id" ref-target="descriptor_color" ld:level="1" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+          </ld:field>
           <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" type-name="int16_t" name="talk_choices" ld:is-container="true">
             <ld:item ld:level="2" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
           </ld:field>
@@ -186,7 +190,11 @@ class TestRender(unittest.TestCase):
             active = 1;
           }
           T_state state = 2;
-          repeated int32 talk_choices = 3;
+          oneof anon {
+            int32 creature_id = 3;
+            int32 color_id = 4;
+          }
+          repeated int32 talk_choices = 5;
         }
         """)
         self.output += out + '\n'
@@ -278,12 +286,13 @@ class TestRender(unittest.TestCase):
               <ld:field name="x" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
               <ld:field name="y" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
             </ld:field>
+            <ld:field ld:subtype="enum" base-type="int16_t" name="item_type" type-name="item_type" ld:level="3" ld:meta="global"/>
           </ld:field>
         </ld:data-definition>
         """        
         root = etree.fromstring(XML)
         out = self.sut.render(root[0])
-        self.assertEqual(len(self.sut.imports), 0)
+        self.assertEqual(list(self.sut.imports), ['item_type'])
         self.assertStructEqual(out, """
         message T_anon {
           int32 x = 1;
@@ -292,6 +301,7 @@ class TestRender(unittest.TestCase):
         oneof anon {
           int32 fps = 1;
           T_anon anon_2 = 2;
+          item_type item_type = 3;
         }
         """)
 
