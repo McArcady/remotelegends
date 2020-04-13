@@ -1,12 +1,12 @@
 import sys
 import traceback
 
-from renderer import Renderer
+from proto_renderer import ProtoRenderer
 
 
 class GlobalTypeRenderer:
 
-    def __init__(self, xml, ns, proto_ns='df'):
+    def __init__(self, xml, ns, proto_ns='dfproto'):
         self.ns = ns
         self.proto_ns = proto_ns
         self.xml = xml
@@ -25,8 +25,8 @@ class GlobalTypeRenderer:
 
     def render(self):
         try:
-            rdr = Renderer(self.ns, self.proto_ns)
-            typout = rdr.render(self.xml)
+            rdr = ProtoRenderer(self.ns, self.proto_ns)
+            typout = rdr.render_type(self.xml)
             out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
             out += 'syntax = "proto3";\n'
             for imp in rdr.imports:

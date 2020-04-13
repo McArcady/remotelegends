@@ -6,11 +6,11 @@ import re
 import subprocess
 from lxml import etree
 
-from renderer import Renderer
+from proto_renderer import ProtoRenderer
 
 OUTPUT_FNAME = 'output.proto'
 
-class TestRenderer(unittest.TestCase):
+class TestProtoRenderer(unittest.TestCase):
 
     output = ''
 
@@ -20,7 +20,7 @@ class TestRenderer(unittest.TestCase):
             fil.write('syntax = "proto3";\n')
             
     def setUp(self):
-        self.sut = Renderer('ns')
+        self.sut = ProtoRenderer('ns')
 
     def tearDown(self):
         with open(OUTPUT_FNAME, 'a') as fil:
@@ -48,7 +48,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         enum ui_advmode_menu {
@@ -70,7 +70,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         enum conflict_level {
@@ -93,7 +93,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message conversation1 {
@@ -114,7 +114,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         # avoid recursive import
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
@@ -135,7 +135,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         # avoid recursive import
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
@@ -165,7 +165,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>   
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message conversation2 {
@@ -196,7 +196,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         self.assertListEqual(list(self.sut.imports), [])
         self.assertStructEqual(out, """
         message conversation3 {
@@ -214,7 +214,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         self.assertListEqual(list(self.sut.imports), ['adventure_item_interact_choicest'])
         self.assertStructEqual(out, """
         message adventure_item {
@@ -237,7 +237,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>   
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         self.assertListEqual(list(self.sut.imports), ['coord'])
         self.assertStructEqual(out, """
         /* comment */
@@ -258,7 +258,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_type(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message announcement_flags {
@@ -287,7 +287,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         enum T_state {
@@ -304,7 +304,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertListEqual(list(self.sut.imports), ['talk_choice_type'])
         self.assertStructEqual(out, """
         talk_choice_type type = 1;
@@ -319,7 +319,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         repeated int32 talk_choices = 1;
@@ -336,7 +336,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         repeated string name_singular = 1;
@@ -353,7 +353,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         repeated int32 children_ref = 1;
@@ -366,7 +366,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(list(self.sut.imports), ['knowledge_scholar_flags_0'])
         self.assertStructEqual(out, """
         knowledge_scholar_flags_0 flags_0 = 1;
@@ -384,7 +384,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message T_unk {
@@ -404,7 +404,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(list(self.sut.imports), ['item_type'])
         self.assertStructEqual(out, """
         message T_anon {
@@ -423,7 +423,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """        
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         oneof data {
@@ -446,7 +446,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """        
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(list(self.sut.imports), ['item_type'])
         self.assertStructEqual(out, """
         message T_anon_2 {
@@ -470,7 +470,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message T_anon_3 {
@@ -494,7 +494,7 @@ class TestRenderer(unittest.TestCase):
         </ld:data-definition>
         """
         root = etree.fromstring(XML)
-        out = self.sut.render(root[0])
+        out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message T_gems_use {
@@ -513,9 +513,9 @@ class TestRenderer(unittest.TestCase):
         tree = etree.parse('codegen/codegen.out.xml')
         root = tree.getroot()
         ns = re.match(r'{.*}', root.tag).group(0)
-        sut = Renderer(ns)
+        sut = ProtoRenderer(ns)
         
         for e in root:
             print( 'line '+str(e.sourceline)+':', e.get(f'{ns}meta'), e.get(f'type-name') )
-            out = sut.render(e)
+            out = sut.render_type(e)
             self.output += out + '\n'

@@ -34,7 +34,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         syntax = "proto3";
         import "history_event_reason.proto";
 
-        package df;
+        package dfproto;
         message history {
           history_event_reason type = 1;
           oneof data {

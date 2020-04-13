@@ -3,7 +3,7 @@ import sys
 import traceback
 
 
-class Renderer:
+class ProtoRenderer:
 
     def __init__(self, ns, proto_ns=None):
         self.ns = '{'+ns+'}'
@@ -33,11 +33,11 @@ class Renderer:
 
     @staticmethod
     def convert_type(typ):
-        return Renderer.TYPES[typ]
+        return ProtoRenderer.TYPES[typ]
 
     @staticmethod
     def is_primitive_type(typ):
-        return typ in Renderer.TYPES.keys()
+        return typ in ProtoRenderer.TYPES.keys()
 
     def get_name(self, xml, value=1):
         name = xml.get('name')
@@ -118,8 +118,8 @@ class Renderer:
     # fields & containers
 
     def _convert_tname(self, tname):
-        if Renderer.is_primitive_type(tname):
-            tname = Renderer.convert_type(tname)
+        if ProtoRenderer.is_primitive_type(tname):
+            tname = ProtoRenderer.convert_type(tname)
         elif tname:
             self.imports.add(tname)
         else:
@@ -144,7 +144,7 @@ class Renderer:
 
     def render_container(self, xml, value=1):
         tname = xml.get('pointer-type')
-        if tname and not Renderer.is_primitive_type(tname):
+        if tname and not ProtoRenderer.is_primitive_type(tname):
             return 'repeated '+ self.render_pointer(xml, value)
         if not tname:
             tname = xml.get('type-name')
@@ -159,14 +159,6 @@ class Renderer:
         assert tname
         self.imports.add(tname)
         return self._render_line(xml, tname, value)
-
-    def render_field(self, xml, value):
-        meta = xml.get(f'{self.ns}meta')
-        assert meta
-        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
-            return self.render_simple_field(xml, value)
-        else:
-            return self.render(xml, value)
         
     
     # structs
@@ -278,37 +270,40 @@ class Renderer:
 
     # main renderer
 
-    def render(self, xml, value=1):
+    def render_field(self, xml, value=1):
         # TODO: handle comments for all types
+        meta = xml.get(f'{self.ns}meta')
+        if not meta or meta == 'compound':
+            return self.render_compound(xml, value)
+        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
+            return self.render_simple_field(xml, value)
+        elif meta == 'container' or meta == 'static-array':
+            return self.render_container(xml, value)
+        elif meta == 'global':
+            return self.render_global(xml, value)
+        elif meta == 'pointer':
+            return self.render_pointer(xml, value)
+        raise Exception('not supported: '+xml.tag+': meta='+str(meta))
+
+    def render_type(self, xml):
+        meta = xml.get(f'{self.ns}meta')
         try:
-            meta = xml.get(f'{self.ns}meta')
-            if not meta or meta == 'compound':
-                return self.render_compound(xml, value)
-            elif meta == 'container':
-                return self.render_container(xml, value)
-            elif meta == 'global':
-                return self.render_global(xml, value)
-            elif meta == 'pointer':
-                return self.render_pointer(xml, value)
-            elif meta == 'static-array':
-                return self.render_container(xml, value)
-            
+            if self.proto_ns:
+                out = 'package ' + self.proto_ns + ';\n'
             else:
-                if self.proto_ns:
-                    out = 'package ' + self.proto_ns + ';\n'
-                else:
-                    out = ''
-                comment = xml.get('comment')
-                if comment:
-                    out += '/* ' + comment + ' */\n'
-                if meta == 'bitfield-type':
-                    return out + self.render_bitfield_type(xml)
-                elif meta == 'enum-type':
-                    return out + self.render_enum_type(xml)
-                elif meta == 'class-type':
-                    return out + self.render_struct_type(xml)
-                elif meta == 'struct-type':
-                    return out + self.render_struct_type(xml)
+                out = ''
+            comment = xml.get('comment')
+            if comment:
+                out += '/* ' + comment + ' */\n'
+            if meta == 'bitfield-type':
+                return out + self.render_bitfield_type(xml)
+            elif meta == 'enum-type':
+                return out + self.render_enum_type(xml)
+            elif meta == 'class-type':
+                return out + self.render_struct_type(xml)
+            elif meta == 'struct-type':
+                return out + self.render_struct_type(xml)
+            raise Exception('not supported: '+xml.tag+': meta='+str(meta))
             
         except Exception as e:
             _,value,tb = sys.exc_info()
@@ -320,4 +315,3 @@ class Renderer:
             ))
             traceback.print_tb(tb)
             return ""
-        raise Exception('not supported: element '+xml.tag+': meta='+str(meta))
