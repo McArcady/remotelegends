@@ -19,8 +19,10 @@ class GlobalTypeRenderer:
             tname = self.xml.get('name')
         assert tname
         return tname           
-        
-        
+
+    def get_meta_type(self):
+        return self.xml.get('{%s}meta' % (self.ns))
+    
 
     # main renderer
 
@@ -80,10 +82,12 @@ class GlobalTypeRenderer:
         proto_name = self.get_type_name() + '.proto'
         with open(path + '/' + proto_name, 'w') as fil:
             fil.write(self.render_proto())
-        cpp_name = self.get_type_name() + '.cpp'
-        with open(path + '/' + cpp_name, 'w') as fil:
-            fil.write(self.render_cpp())
-        h_name = self.get_type_name() + '.h'
-        with open(path + '/' + h_name, 'w') as fil:
-            fil.write(self.render_h())
-        return proto_name
+        if self.get_meta_type() in ['struct-type', 'class-type']:
+            cpp_name = self.get_type_name() + '.cpp'
+            with open(path + '/' + cpp_name, 'w') as fil:
+                fil.write(self.render_cpp())
+            h_name = self.get_type_name() + '.h'
+            with open(path + '/' + h_name, 'w') as fil:
+                fil.write(self.render_h())
+            return proto_name, cpp_name, h_name
+        return [proto_name]

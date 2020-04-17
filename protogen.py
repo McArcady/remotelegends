@@ -61,8 +61,8 @@ def main():
                 print('skipped global-object '+item.get('name'))
                 continue                      
             rdr = GlobalTypeRenderer(item, ns)
-            fname = rdr.render_to_files(outdir)
-            print('created %s' % (outdir+rdr.get_type_name()+'.proto, .h., .cpp'))
+            fnames = rdr.render_to_files(outdir)
+            print('created %s' % (', '.join(fnames)))
     outxml.close()
     print('created %s' % (outxml.name))
 

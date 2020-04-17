@@ -2,6 +2,7 @@
 
 import unittest
 import subprocess
+import os
 from lxml import etree
 
 from global_type_renderer import GlobalTypeRenderer
@@ -9,7 +10,6 @@ from global_type_renderer import GlobalTypeRenderer
 
 class TestGlobalTypeRenderer(unittest.TestCase):
 
-    @classmethod
     def setUp(self):
         self.XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -68,6 +68,11 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         }
         """
         self.maxDiff = None
+        self.delete_me = []
+
+    def tearDown(self):
+        for f in self.delete_me:
+            os.remove(f)
         
 
     def assertStructEqual(self, str1, str2):
@@ -77,6 +82,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         root = etree.fromstring(self.XML)
         sut = GlobalTypeRenderer(root[0], 'ns')
         self.assertEqual(sut.get_type_name(), 'history_event_reason_info')
+        self.assertEqual(sut.get_meta_type(), 'struct-type')
         out = sut.render_proto()
         self.assertStructEqual(out, self.PROTO)
 
@@ -87,19 +93,26 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         out = sut.render_cpp()
         self.assertStructEqual(out, self.CPP)
 
+    def test_render_h(self):
+        root = etree.fromstring(self.XML)
+        sut = GlobalTypeRenderer(root[0], 'ns')
+        self.assertEqual(sut.get_type_name(), 'history_event_reason_info')
+        out = sut.render_h()
+        self.assertStructEqual(out, self.H)
+
     def test_render_to_files(self):
         root = etree.fromstring(self.XML)
         sut = GlobalTypeRenderer(root[0], 'ns')
-        fname = sut.render_to_files('./')
-        self.assertEqual(fname, 'history_event_reason_info.proto')
+        fnames = sut.render_to_files('./')
+        self.delete_me = fnames
         # check and compile proto
-        with open(fname, 'r') as fil:
+        with open(fnames[0], 'r') as fil:
             self.assertStructEqual(fil.read(), self.PROTO)
-        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (fname, fname)], shell=True)
+#        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (fnames[0], fnames[0])], shell=True)
         # check .h
-        with open('src/history_event_reason_info.h', 'r') as fil:
+        with open(fnames[2], 'r') as fil:
             self.assertStructEqual(fil.read(), self.H)
         # check and compile cpp
-        with open('src/history_event_reason_info.cpp', 'r') as fil:
+        with open(fnames[1], 'r') as fil:
             self.assertStructEqual(fil.read(), self.CPP)
-        subprocess.check_call(['g++ -c -Wall -DLINUX_BUILD -lprotobuf -Iprotogen/ -I../dfhack/library/include src/history_event_reason_info.cpp'], shell=True)
+#        subprocess.check_call(['g++ -c -Wall -DLINUX_BUILD -lprotobuf -Iprotogen/ -I../dfhack/library/include %s' % (fnames[1])], shell=True)
