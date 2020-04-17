@@ -358,6 +358,30 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertStructEqual(out, """
         repeated int32 children_ref = 1;
         """)
+    
+    def test_render_field_pointer_to_anon_compound(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="pointer" name="map" is-array="true" ld:is-container="true">
+          <ld:item ld:level="2" ld:meta="pointer" is-array="true" ld:is-container="true">
+            <ld:item ld:meta="compound" ld:level="2">
+              <ld:field ld:meta="container" ld:level="3" ld:subtype="stl-vector" name="entities" type-name="int32_t" ref-target="historical_entity" ld:is-container="true">
+                <ld:item ref-target="historical_entity" ld:level="4" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+              </ld:field>
+            </ld:item>
+          </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render_field(root[0])
+        self.assertListEqual(list(self.sut.imports), [])
+        self.assertStructEqual(out, """
+        message T_map {
+          repeated int32 entities = 1;
+        }
+        T_map map = 1;
+        """)
 
     def test_render_field_bitfield(self):
         XML = """

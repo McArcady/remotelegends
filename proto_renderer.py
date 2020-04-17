@@ -136,11 +136,13 @@ class ProtoRenderer:
         name = self.get_name(xml, value)
         return self._render_line(xml, tname, value)
 
-    def render_pointer(self, xml, value=1):
+    def render_pointer(self, xml, value=1, name=None):
+        if not name:
+            name = self.get_name(xml, value)
         tname = xml.get('type-name')
-        if not tname:
-            tname = 'bytes'
-        return self._render_line(xml, 'int32', value, name=self.get_name(xml,value)+'_ref')
+        if tname == None and len(xml):
+            return self.render_field(xml[0], value, name)
+        return self._render_line(xml, 'int32', value, name=name+'_ref')
 
     def render_container(self, xml, value=1):
         tname = xml.get('pointer-type')
@@ -152,7 +154,6 @@ class ProtoRenderer:
             tname = 'int32'
         else:
             tname = self._convert_tname(tname)
-        # FIXME: handle vector of pointers to anon compound (e.g: unit_wound.parts)
         return self._render_line(xml, 'repeated '+tname, value)
     
     def render_global(self, xml, value=1):
@@ -188,7 +189,7 @@ class ProtoRenderer:
             tname = 'T_anon'
         return self.render_struct_type(xml, tname)
 
-    def render_compound(self, xml, value=1):
+    def render_compound(self, xml, value=1, name=None):
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'enum':
             return self.render_enum(xml, value)
@@ -203,8 +204,9 @@ class ProtoRenderer:
             return self.render_union(xml, self.get_name(xml,value), value)
         if anon == 'true':
             return self.render_anon_compound(xml)
-        
-        name = self.get_name(xml, value)
+
+        if not name:
+            name = self.get_name(xml, value)
         tname = self.get_typedef_name(xml, name)
         out = self.render_struct_type(xml, tname)
         out += self.ident(xml) + tname + ' ' + name + ' = ' + str(value) + ';\n'
@@ -271,11 +273,11 @@ class ProtoRenderer:
 
     # main renderer
 
-    def render_field(self, xml, value=1):
+    def render_field(self, xml, value=1, name=None):
         # TODO: handle comments for all types
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
-            return self.render_compound(xml, value)
+            return self.render_compound(xml, value, name)
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':
             return self.render_simple_field(xml, value)
         elif meta == 'container' or meta == 'static-array':
@@ -283,7 +285,7 @@ class ProtoRenderer:
         elif meta == 'global':
             return self.render_global(xml, value)
         elif meta == 'pointer':
-            return self.render_pointer(xml, value)
+            return self.render_pointer(xml, value, name)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_type(self, xml):
