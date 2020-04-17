@@ -6,10 +6,15 @@ import traceback
 class CppRenderer:
 
     def __init__(self, xml_ns, proto_ns, cpp_ns):
+        # namespaces: xml, protobuf, cpp
         self.ns = '{'+xml_ns+'}'
         self.proto_ns = proto_ns
         self.cpp_ns = cpp_ns
+        # external dfhack & protobuf dependencies
         self.imports = set()
+        # external dfproto dependencies
+        self.dfproto_imports = set()
+        # guess of the discriminant element for union
         self.last_enum_descr = None
         
     TYPES = defaultdict(lambda: None, {
@@ -157,9 +162,14 @@ class CppRenderer:
         name = self.get_name(xml, value)
         tname = xml.get('type-name')
         assert tname
-        self.imports.add(tname)
-        if xml.get(f'{self.ns}subtype') == 'enum':
+        subtype = xml.get(f'{self.ns}subtype')
+        if subtype == 'enum':
+            self.imports.add(tname)
             return self.render_enum(xml)
+        if subtype == 'bitfield':
+            self.imports.add(tname)
+            return self.render_bitfield(xml, value)
+        self.dfproto_imports.add(tname)
         return '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
             tname, name, name
         )
@@ -176,7 +186,7 @@ class CppRenderer:
         parent = xml.get('inherits-from')
         if parent:
             out += '  ' + 'describe_%s(proto->mutable_parent(), dfhack);\n' % ( parent )
-            self.imports.add(parent)
+            self.dfproto_imports.add(parent)
         for item in xml.findall(f'{self.ns}field'):
             name = self.get_name(item)
             tname = item.get(f'{self.ns}subtype') or item.get('type-name')
@@ -260,7 +270,7 @@ class CppRenderer:
     def render_bitfield(self, xml, value):
         name = self.get_name(xml, value)
         tname = self.get_typedef_name(xml, name)
-        out = '  proto->%s.flags = dfhack->%s.whole;\n' % (
+        out = '  proto->mutable_%s()->set_flags(dfhack->%s.whole);\n' % (
             name, name
         )
         return out
