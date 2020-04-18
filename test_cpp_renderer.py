@@ -203,6 +203,35 @@ class TestCppRenderer(unittest.TestCase):
         """)
         self.output += out + '\n'
 
+    def test_render_field_pointer_to_anon_compound(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="pointer" name="map" is-array="true" ld:is-container="true">
+          <ld:item ld:level="2" ld:meta="pointer" is-array="true" ld:is-container="true">
+            <ld:item ld:meta="compound" ld:level="2">
+              <ld:field ld:meta="container" ld:level="3" ld:subtype="stl-vector" name="entities" type-name="int32_t" ref-target="historical_entity" ld:is-container="true">
+                <ld:item ref-target="historical_entity" ld:level="4" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+              </ld:field>
+            </ld:item>
+          </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        self.sut.global_type_name = 'entity_claim_mask'
+        out = self.sut.render_field(root[0])
+        self.assertListEqual(list(self.sut.imports), [])
+        self.assertEqual(list(self.sut.dfproto_imports), [])
+        self.assertStructEqual(out, """
+        auto describe_T_map = [](dfproto::entity_claim_mask_T_map* proto, df::entity_claim_mask::T_map* dfhack) {
+	  for (size_t i=0; i<dfhack->entities.size(); i++) {
+	    proto->add_entities(dfhack->entities[i]);
+	  }
+        }
+        describe_T_map(proto->mutable_map(), *dfhack->map);
+        """)
+        self.output += out + '\n'
+
     def test_render_global_type_struct_with_inheritance(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -375,7 +404,7 @@ class TestCppRenderer(unittest.TestCase):
     #     """
     #     root = etree.fromstring(XML)
     #     out = self.sut.render_field(root[0])
-    #     self.assertEqual(len(self.sut.imports), 0)
+    #     self.assertEqual(list(self.sut.imports), [])
     #     self.assertStructEqual(out, """
     #     repeated int32 children_ref = 1;
     #     """)

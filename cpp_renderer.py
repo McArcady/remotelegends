@@ -133,10 +133,13 @@ class CppRenderer:
             name, name
         )
 
-    def render_pointer(self, xml, value=1):
+    def render_pointer(self, xml, value=1, name=None):
+        if not name:
+            name = self.get_name(xml, value)
         tname = xml.get('type-name')
+        if tname == None and len(xml):
+            return self.render_field(xml[0], value, name)
         self.imports.add(tname)
-        name = self.get_name(xml, value)
         return '  ' + 'proto->set_%s_ref(dfhack->%s->id);\n' % (
             name, name
         )
@@ -156,7 +159,8 @@ class CppRenderer:
             tname = 'int32'
         else:
             tname = self._convert_tname(tname)
-        return self._render_line(xml, 'repeated '+tname, value)
+        out = '  for (size_t i=0; i<dfhack->%s.size(); i++) {\n    proto->add_%s(dfhack->%s[i]);\n  }\n' % ( name, name, name )
+        return out
     
     def render_global(self, xml, value=1):
         name = self.get_name(xml, value)
@@ -194,12 +198,18 @@ class CppRenderer:
         out += '}\n'
         return out
 
-    def render_anon_compound(self, xml, tname=None):
-        if not tname:
-            tname = 'T_anon'
-        return self.render_struct_type(xml, tname)
+    def render_anon_compound(self, xml, name=None):
+        tname = self.get_typedef_name(xml, name)
+        # lambda
+        out  = '  ' + 'auto describe_%s = [](dfproto::%s_%s* proto, df::%s::%s* dfhack) {\n' % ( tname, self.global_type_name, tname, self.global_type_name, tname )
+        for item in xml.findall(f'{self.ns}field'):
+            name = self.get_name(item)
+            tname = item.get(f'{self.ns}subtype') or item.get('type-name')
+            out += self.render_field(item)
+        out += '}\n'
+        return out
 
-    def render_compound(self, xml, value=1):
+    def render_compound(self, xml, value=1, name=None):
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'enum':
             return self.render_enum(xml, value)
@@ -214,10 +224,14 @@ class CppRenderer:
             return self.render_union(xml, value)
         if anon == 'true':
             return self.render_anon_compound(xml)
-        
-        name = self.get_name(xml, value)
+
+        if not name:
+            name = self.get_name(xml, value)
         tname = self.get_typedef_name(xml, name)
-        out = self.ident(xml) + tname + ' ' + name + ' = ' + str(value) + ';\n'
+        out  = self.render_anon_compound(xml, name)
+        out += '  ' + 'describe_%s(proto->mutable_%s(), *dfhack->%s);\n' % (
+            tname, name, name
+        )
         return out
     
 
@@ -278,11 +292,11 @@ class CppRenderer:
 
     # main renderer
 
-    def render_field(self, xml, value=1):
+    def render_field(self, xml, value=1, name=None):
         # TODO: handle comments for all types
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
-            return self.render_compound(xml, value)
+            return self.render_compound(xml, value, name)
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':
             return self.render_simple_field(xml)
         elif meta == 'container' or meta == 'static-array':
@@ -290,10 +304,12 @@ class CppRenderer:
         elif meta == 'global':
             return self.render_global(xml, value)
         elif meta == 'pointer':
-            return self.render_pointer(xml, value)
+            return self.render_pointer(xml, value, name)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_type(self, xml):
+        # high-order type name
+        self.global_type_name = xml.get('type-name')
         meta = xml.get(f'{self.ns}meta')
         try:
             out = ''
