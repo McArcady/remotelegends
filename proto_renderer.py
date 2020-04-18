@@ -144,7 +144,7 @@ class ProtoRenderer:
             return self.render_field(xml[0], value, name)
         return self._render_line(xml, 'int32', value, name=name+'_ref')
 
-    def render_container(self, xml, value=1):
+    def render_container(self, xml, value=1, name=None):
         tname = xml.get('pointer-type')
         if tname and not ProtoRenderer.is_primitive_type(tname):
             return 'repeated '+ self.render_pointer(xml, value)
@@ -154,7 +154,7 @@ class ProtoRenderer:
             tname = 'int32'
         else:
             tname = self._convert_tname(tname)
-        return self._render_line(xml, 'repeated '+tname, value)
+        return self._render_line(xml, 'repeated '+tname, value, name)
     
     def render_global(self, xml, value=1):
         tname = xml.get('type-name')
@@ -281,7 +281,7 @@ class ProtoRenderer:
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':
             return self.render_simple_field(xml, value)
         elif meta == 'container' or meta == 'static-array':
-            return self.render_container(xml, value)
+            return self.render_container(xml, value, name)
         elif meta == 'global':
             return self.render_global(xml, value)
         elif meta == 'pointer':

@@ -324,6 +324,32 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertStructEqual(out, """
         repeated int32 talk_choices = 1;
         """)
+
+    @unittest.skip('FIXME')
+    def test_render_field_container_of_container(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="3" ld:subtype="stl-vector" name="region_masks" ld:is-container="true">
+          <ld:item ld:level="4" ld:meta="pointer" ld:is-container="true">
+            <ld:item ld:level="5" ld:meta="static-array" count="16" ld:is-container="true">
+              <ld:item ld:level="6" ld:meta="static-array" count="16" type-name="uint8_t" comment="1 bit per entity" ld:is-container="true"><ld:item ld:level="7" ld:meta="number" ld:subtype="uint8_t" ld:unsigned="true" ld:bits="8"/></ld:item>
+            </ld:item>
+          </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render_field(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
+        self.assertStructEqual(out, """
+        message T_region_masks {
+          message T_region_masks_inner {
+            repeated uint32 value = 1;
+          }
+          repeated T_region_masks_inner value = 1;
+        }
+        repeated T_region_masks region_masks = 1;
+        """)
     
     def test_render_field_container_pointer_to_primitive(self):
         XML = """
@@ -381,6 +407,23 @@ class TestProtoRenderer(unittest.TestCase):
           repeated int32 entities = 1;
         }
         T_map map = 1;
+        """)
+            
+    def test_render_field_pointer_to_container(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="pointer" name="temporary_trait_changes" comment="sum of inebriation or so personality changing effects" ld:is-container="true">
+          <ld:item ld:level="2" ld:meta="static-array" type-name="int16_t" name="traits" count="50" index-enum="personality_facet_type" ld:is-container="true">
+            <ld:item ld:level="3" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+          </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render_field(root[0])
+        self.assertListEqual(list(self.sut.imports), [])
+        self.assertStructEqual(out, """
+        repeated int32 temporary_trait_changes = 1;
         """)
 
     def test_render_field_bitfield(self):
