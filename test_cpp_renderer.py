@@ -227,7 +227,7 @@ class TestCppRenderer(unittest.TestCase):
 	  for (size_t i=0; i<dfhack->entities.size(); i++) {
 	    proto->add_entities(dfhack->entities[i]);
 	  }
-        }
+        };
         describe_T_map(proto->mutable_map(), *dfhack->map);
         """)
         self.output += out + '\n'

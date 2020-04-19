@@ -52,6 +52,8 @@ class GlobalTypeRenderer:
             for imp in rdr.imports:
                 out += '#include \"df/%s.h\"\n' % (imp)
                 out += '#include \"%s.pb.h\"\n' % (imp)
+            for imp in rdr.dfproto_imports:
+                out += '#include \"%s.h\"\n' % (imp)
             out += '\n' + typout
             return out
         except Exception as e:
@@ -68,7 +70,7 @@ class GlobalTypeRenderer:
             out += '#include <stdint.h>\n'
             out += '#include \"df/%s.h\"\n' % (self.get_type_name())
             out += '#include \"%s.pb.h\"\n' % (self.get_type_name())
-            out += 'namespace DFProto {\n'
+            out += '\nnamespace DFProto {\n'
             out += '  %s\n' % (rdr.render_prototype(self.xml))
             out += '}\n'
             return out

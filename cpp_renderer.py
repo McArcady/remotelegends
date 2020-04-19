@@ -159,6 +159,8 @@ class CppRenderer:
             tname = 'int32'
         else:
             tname = self._convert_tname(tname)
+        if tname == 'bytes':
+            return '  // type of %s not supported' % (name)
         out = '  for (size_t i=0; i<dfhack->%s.size(); i++) {\n    proto->add_%s(dfhack->%s[i]);\n  }\n' % ( name, name, name )
         return out
     
@@ -206,7 +208,7 @@ class CppRenderer:
             name = self.get_name(item)
             tname = item.get(f'{self.ns}subtype') or item.get('type-name')
             out += self.render_field(item)
-        out += '}\n'
+        out += '};\n'
         return out
 
     def render_compound(self, xml, value=1, name=None):
@@ -238,7 +240,6 @@ class CppRenderer:
     # unions
 
     def render_union(self, xml, tname, value=1):
-        # TODO: find sibling field that contains the discriminator between elements of the union
         name = self.get_name(xml)
         if self.last_enum_descr == None:
             return '// failed to find a discriminator for union %s\n' % (self.get_typedef_name(xml, name))
