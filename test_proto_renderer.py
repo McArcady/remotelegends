@@ -17,7 +17,7 @@ class TestProtoRenderer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         with open(OUTPUT_FNAME, 'w') as fil:
-            fil.write('syntax = "proto3";\n')
+            fil.write('syntax = "proto2";\n')
             
     def setUp(self):
         self.sut = ProtoRenderer('ns')
@@ -82,7 +82,7 @@ class TestProtoRenderer(unittest.TestCase):
         """)
         self.output += out + '\n'
 
-            
+    
     def test_render_global_type_struct_with_primitive_fields(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -97,8 +97,8 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message conversation1 {
-          string conv_title = 1;
-          int32 unk_30 = 2;
+          required string conv_title = 1;
+          required int32 unk_30 = 2;
         }
         """)
         self.output += out + '\n'
@@ -119,7 +119,7 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message job_list_link {
-          int32 next_ref = 1;
+          optional int32 next_ref = 1;
         }
         """)
         self.output += out + '\n'
@@ -140,7 +140,7 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message projectile {
-          int32 link_ref = 1;
+          optional int32 link_ref = 1;
         }
         """)
         self.output += out + '\n'
@@ -169,12 +169,12 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message conversation2 {
-          string conv_title = 1;
+          required string conv_title = 1;
           enum T_state {
             state_started = 0;
             state_active = 1;
           }
-          T_state state = 2;
+          required T_state state = 2;
           oneof anon {
             int32 creature_id = 3;
             int32 color_id = 4;
@@ -200,7 +200,7 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertListEqual(list(self.sut.imports), [])
         self.assertStructEqual(out, """
         message conversation3 {
-          repeated int32 unk_54_ref = 1;
+          optional int32 unk_54_ref = 1;
         }
         """)
         self.output += out + '\n'
@@ -218,8 +218,8 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertListEqual(list(self.sut.imports), ['adventure_item_interact_choicest'])
         self.assertStructEqual(out, """
         message adventure_item {
-          adventure_item_interact_choicest parent = 1; /* parent type */
-          int32 anon_2_ref = 2;
+          required adventure_item_interact_choicest parent = 1; /* parent type */
+          optional int32 anon_2_ref = 2;
         }
         """)
 
@@ -242,8 +242,8 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertStructEqual(out, """
         /* comment */
         message adventure_movement_optionst {
-          coord dest = 1;
-          coord source = 2;
+          required coord dest = 1;
+          required coord source = 2;
         }
         """)
 
@@ -267,7 +267,7 @@ class TestProtoRenderer(unittest.TestCase):
             PAUSE = 0x1; /* P */
             RECENTER = 0x2; /* R */
           }
-          fixed32 flags = 1;
+          required fixed32 flags = 1;
         }
         """)
         self.output += out + '\n'
@@ -294,7 +294,7 @@ class TestProtoRenderer(unittest.TestCase):
           state_started = 0;
           state_active = 1;
         }
-        T_state state = 1;
+        required T_state state = 1;
         """)
 
     def test_render_field_global_enum(self):
@@ -307,7 +307,7 @@ class TestProtoRenderer(unittest.TestCase):
         out = self.sut.render_field(root[0])
         self.assertListEqual(list(self.sut.imports), ['talk_choice_type'])
         self.assertStructEqual(out, """
-        talk_choice_type type = 1;
+        required talk_choice_type type = 1;
         """)
     
     def test_render_field_container(self):
@@ -373,8 +373,8 @@ class TestProtoRenderer(unittest.TestCase):
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="children" pointer-type="building" ld:is-container="true">
           <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="building">
-          <ld:item ld:level="3" ld:meta="global" type-name="building"/>
-        </ld:item>
+            <ld:item ld:level="3" ld:meta="global" type-name="building"/>
+          </ld:item>
         </ld:field>
         </ld:data-definition>
         """
@@ -382,7 +382,7 @@ class TestProtoRenderer(unittest.TestCase):
         out = self.sut.render_field(root[0])
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
-        repeated int32 children_ref = 1;
+        optional int32 children_ref = 1;
         """)
     
     def test_render_field_pointer_to_anon_compound(self):
@@ -406,7 +406,7 @@ class TestProtoRenderer(unittest.TestCase):
         message T_map {
           repeated int32 entities = 1;
         }
-        T_map map = 1;
+        required T_map map = 1;
         """)
             
     def test_render_field_pointer_to_container(self):
@@ -436,7 +436,7 @@ class TestProtoRenderer(unittest.TestCase):
         out = self.sut.render_field(root[0])
         self.assertEqual(list(self.sut.imports), ['knowledge_scholar_flags_0'])
         self.assertStructEqual(out, """
-        knowledge_scholar_flags_0 flags_0 = 1;
+        required knowledge_scholar_flags_0 flags_0 = 1;
         """)
 
     def test_render_field_local_compound(self):
@@ -455,10 +455,10 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertEqual(len(self.sut.imports), 0)
         self.assertStructEqual(out, """
         message T_unk {
-          int32 event_ref = 1;
-          int32 anon_2 = 2;
+          optional int32 event_ref = 1;
+          required int32 anon_2 = 2;
         }
-        T_unk unk = 1;
+        required T_unk unk = 1;
         """)
 
     def test_render_field_anon_compound(self):
@@ -475,8 +475,8 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertEqual(list(self.sut.imports), ['item_type'])
         self.assertStructEqual(out, """
         message T_anon {
-          int32 x = 1;
-          item_type item_type = 2;
+          required int32 x = 1;
+          required item_type item_type = 2;
         }
         """)
 
@@ -517,8 +517,8 @@ class TestProtoRenderer(unittest.TestCase):
         self.assertEqual(list(self.sut.imports), ['item_type'])
         self.assertStructEqual(out, """
         message T_anon_2 {
-          int32 x = 1;
-          int32 y = 2;
+          required int32 x = 1;
+          required int32 y = 2;
         }
         oneof anon {
           int32 fps = 1;
@@ -545,9 +545,9 @@ class TestProtoRenderer(unittest.TestCase):
             petition_not_accepted = 0x0; /* this gets unset by accepting a petition */
             convicted_accepted = 0x1; /* convicted for PositionCorruption/accepted for Location */
           }
-          fixed32 flags = 1;
+          required fixed32 flags = 1;
         }
-        T_anon_3 anon_3 = 1;
+        required T_anon_3 anon_3 = 1;
         """)
 
     def test_render_field_bitfield(self):
@@ -570,9 +570,9 @@ class TestProtoRenderer(unittest.TestCase):
             adj = 0x1;
             adj_noun = 0x2;
           }
-          fixed32 flags = 1;
+          required fixed32 flags = 1;
         }
-        T_gems_use gems_use = 1;
+        required T_gems_use gems_use = 1;
         """)
 
 

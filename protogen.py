@@ -23,6 +23,8 @@ def main():
     parser.add_argument('--output', '-o', metavar='OUTPUT', type=str,
                         default='./protogen',
                         help='output directory (default=./protogen)')
+    parser.add_argument('--version', '-v', metavar='VERSION', type=int,
+                        default='2', help='protobuf version (default=2)')
     args = parser.parse_args()
 
     # input dir
@@ -60,7 +62,7 @@ def main():
             if 'global-type' not in item.tag:
                 print('skipped global-object '+item.get('name'))
                 continue                      
-            rdr = GlobalTypeRenderer(item, ns)
+            rdr = GlobalTypeRenderer(item, ns).set_proto_version(args.version)
             fnames = rdr.render_to_files(outdir)
             print('created %s' % (', '.join(fnames)))
     outxml.close()

@@ -24,12 +24,12 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         """
         self.PROTO = """
         /* THIS FILE WAS GENERATED. DO NOT EDIT. */
-        syntax = "proto3";
+        syntax = "proto2";
         import "history_event_reason.proto";
 
         package dfproto;
         message history_event_reason_info {
-          history_event_reason type = 1;
+          required history_event_reason type = 1;
           oneof data {
             int32 glorify_hf = 2;
             int32 artifact_is_heirloom_of_family_hfid = 3;

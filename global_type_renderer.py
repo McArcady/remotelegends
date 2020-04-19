@@ -11,8 +11,13 @@ class GlobalTypeRenderer:
         self.ns = ns
         self.proto_ns = proto_ns
         self.xml = xml
+        self.version = 2
         assert self.xml.tag == '{%s}global-type' % (self.ns)
 
+    def set_proto_version(self, ver):
+        self.version = ver
+        return self
+    
     def get_type_name(self):
         tname = self.xml.get('type-name')
         if not tname:
@@ -28,10 +33,10 @@ class GlobalTypeRenderer:
 
     def render_proto(self):
         try:
-            rdr = ProtoRenderer(self.ns, self.proto_ns)
+            rdr = ProtoRenderer(self.ns, self.proto_ns).set_version(self.version)
             typout = rdr.render_type(self.xml)
             out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
-            out += 'syntax = "proto3";\n'
+            out += 'syntax = "proto%d";\n' % (self.version)
             for imp in rdr.imports:
                 out += 'import \"%s.proto\";\n' % (imp)
             # TODO: declare package 'df'
