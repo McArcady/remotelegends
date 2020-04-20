@@ -36,6 +36,8 @@ def main():
                         help='output directory for c++ headers (default=./protogen)')
     parser.add_argument('--version', '-v', metavar='2|3', type=int,
                         default='2', help='protobuf version (default=2)')
+    parser.add_argument('--quiet', '-q', action='store_true',
+                        default=False, help='no output (default: False)')
     args = parser.parse_args()
 
     # input dir
@@ -48,7 +50,8 @@ def main():
     for outdir in [args.proto_out, args.cpp_out, args.h_out]:
         if not os.path.exists(outdir):
             os.mkdir(outdir)
-            print('created ' + outdir)
+            if not args.quiet:
+                sys.stdout.write('created %s\n' % (outdir))
 
     # xml with all types
     outxml = open(args.proto_out+'/protogen.out.xml', 'wb')
@@ -62,7 +65,8 @@ def main():
         filt = indir+'df.*.xml'
     rc = 0
     for f in glob.glob(filt):
-        sys.stdout.write(COLOR_OKBLUE + 'processing %s...\n' % (f) + COLOR_ENDC)
+        if not args.quiet:
+            sys.stdout.write(COLOR_OKBLUE + 'processing %s...\n' % (f) + COLOR_ENDC)
         xml = etree.parse(f)
         for t in transforms:
             xml = t(xml)
@@ -71,11 +75,14 @@ def main():
         for item in xml.getroot():
             try:
                 if 'global-type' not in item.tag:
-                    print('skipped global-object '+item.get('name'))
+                    if not args.quiet:
+                        sys.stdout.write('skipped global-object '+item.get('name') + '\n')
                     continue
-                rdr = GlobalTypeRenderer(item, ns).set_proto_version(args.version)
+                rdr = GlobalTypeRenderer(item, ns)
+                rdr.set_proto_version(args.version)
                 fnames = rdr.render_to_files(args.proto_out, args.cpp_out, args.h_out)
-                print('created %s' % (', '.join(fnames)))
+                if not args.quiet:
+                    sys.stdout.write('created %s\n' % (', '.join(fnames)))
             except Exception as e:
                 _,_,tb = sys.exc_info()
                 sys.stderr.write(COLOR_FAIL + 'error rendering type %s at line %d: %s\n' % (rdr.get_type_name(), item.sourceline if item.sourceline else 0, e) + COLOR_ENDC)
@@ -86,7 +93,8 @@ def main():
             break
 
     outxml.close()
-    print('created %s' % (outxml.name))
+    if not args.quiet:
+        sys.stdout.write('created %s\n' % (outxml.name))
     sys.exit(rc)
 
 
