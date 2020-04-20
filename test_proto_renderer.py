@@ -1,5 +1,6 @@
 #!/bin/python3
 
+import os
 import unittest
 import mock
 import re
@@ -29,6 +30,8 @@ class TestProtoRenderer(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         subprocess.check_call(['protoc -I. -o%s.pb  %s' % (OUTPUT_FNAME, OUTPUT_FNAME)], shell=True)
+        os.remove(OUTPUT_FNAME)
+        os.remove(OUTPUT_FNAME+'.pb')
 
     def assertStructEqual(self, str1, str2):
         self.assertEqual(''.join(str1.split()), ''.join(str2.split()), str1+'/'+str2)

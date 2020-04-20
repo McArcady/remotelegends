@@ -137,12 +137,20 @@ class CppRenderer:
         if not name:
             name = self.get_name(xml, value)
         tname = xml.get('type-name')
-        if tname == None and len(xml):
-            return self.render_field(xml[0], value, name)
+        if tname == None:
+            if len(xml):
+                return self.render_field(xml[0], value, name)
+            else:
+                # pointer to anon type
+                return '  // ignored pointer to unknown type'
+        if CppRenderer.is_primitive_type(tname):
+            return '  ' + 'proto->set_%s(*dfhack->%s);\n' % (
+                name, name
+            )
         self.imports.add(tname)
         return '  ' + 'proto->set_%s_ref(dfhack->%s->id);\n' % (
             name, name
-        )
+        )        
 
     def render_container(self, xml, value=1):
         name = self.get_name(xml)
