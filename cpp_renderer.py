@@ -201,6 +201,8 @@ class CppRenderer:
         return out
 
     def render_anon_compound(self, xml, name=None):
+        if not name:
+            name = self.get_name(xml)
         tname = self.get_typedef_name(xml, name)
         # lambda
         out  = '  ' + 'auto describe_%s = [](dfproto::%s_%s* proto, df::%s::%s* dfhack) {\n' % ( tname, self.global_type_name, tname, self.global_type_name, tname )
@@ -224,14 +226,12 @@ class CppRenderer:
             if anon == 'true':
                 return self.render_union(xml, 'anon', value)
             return self.render_union(xml, value)
-        if anon == 'true':
-            return self.render_anon_compound(xml)
 
         if not name:
             name = self.get_name(xml, value)
         tname = self.get_typedef_name(xml, name)
         out  = self.render_anon_compound(xml, name)
-        out += '  ' + 'describe_%s(proto->mutable_%s(), *dfhack->%s);\n' % (
+        out += '  ' + 'describe_%s(proto->mutable_%s(), dfhack->%s);\n' % (
             tname, name, name
         )
         return out

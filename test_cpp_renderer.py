@@ -20,6 +20,7 @@ class TestCppRenderer(unittest.TestCase):
     
     def setUp(self):
         self.sut = CppRenderer('ns', 'dfproto', 'DFProto')
+        self.maxDiff = None
 
     @classmethod
     def tearDownClass(cls):
@@ -204,6 +205,7 @@ class TestCppRenderer(unittest.TestCase):
         self.output += out + '\n'
 
     def test_render_field_pointer_to_anon_compound(self):
+        # FIXME: probably need indirection for dfhack->map -> *dfhack->map
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:level="1" ld:meta="pointer" name="map" is-array="true" ld:is-container="true">
@@ -228,7 +230,7 @@ class TestCppRenderer(unittest.TestCase):
 	    proto->add_entities(dfhack->entities[i]);
 	  }
         };
-        describe_T_map(proto->mutable_map(), *dfhack->map);
+        describe_T_map(proto->mutable_map(), dfhack->map);
         """)
         self.output += out + '\n'
 
@@ -445,24 +447,26 @@ class TestCppRenderer(unittest.TestCase):
     #     T_unk unk = 1;
     #     """)
 
-    # def test_render_field_anon_compound(self):
-    #     XML = """
-    #     <ld:data-definition xmlns:ld="ns">
-    #       <ld:field ld:anon-compound="true" ld:level="1" ld:meta="compound">
-    #         <ld:field name="x" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
-    #         <ld:field ld:subtype="enum" base-type="int16_t" name="item_type" type-name="item_type" ld:level="2" ld:meta="global"/>
-    #       </ld:field>
-    #     </ld:data-definition>
-    #     """
-    #     root = etree.fromstring(XML)
-    #     out = self.sut.render_field(root[0])
-    #     self.assertEqual(list(self.sut.imports), ['item_type'])
-    #     self.assertStructEqual(out, """
-    #     message T_anon {
-    #       int32 x = 1;
-    #       item_type item_type = 2;
-    #     }
-    #     """)
+    def test_render_field_anon_compound(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+          <ld:field ld:anon-compound="true" ld:level="1" ld:meta="compound">
+            <ld:field name="x" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+            <ld:field ld:subtype="enum" base-type="int16_t" name="item_type" type-name="item_type" ld:level="2" ld:meta="global"/>
+          </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        self.sut.global_type_name = 'type_name'
+        out = self.sut.render_field(root[0])
+        self.assertEqual(list(self.sut.imports), ['item_type'])
+        self.assertStructEqual(out, """
+        auto describe_T_anon_1 = [](dfproto::type_name_T_anon_1* proto, df::type_name::T_anon_1* dfhack) {
+          proto->set_x(dfhack->x);
+          proto->set_item_type(static_cast<dfproto::item_type>(dfhack->item_type));
+        };
+        describe_T_anon_1(proto->mutable_anon_1(), dfhack->anon_1);
+        """)
 
 
     # def test_render_field_anon_compound_union(self):
@@ -555,6 +559,31 @@ class TestCppRenderer(unittest.TestCase):
         void describe_announcement_flags(dfproto::announcement_flags* proto, df::announcement_flags* dfhack);
         """)
         self.output += out + '\n'
+
+    def _test_debug(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="large_integer" is-union="true">
+          <ld:field ld:anon-compound="true" ld:level="1" ld:meta="compound">
+            <ld:field name="low_part" ld:level="1" ld:meta="number" ld:subtype="long" ld:bits=""/>
+            <ld:field name="high_part" ld:level="1" ld:meta="number" ld:subtype="long" ld:bits=""/>
+          </ld:field>
+          <ld:field name="u" ld:level="1" ld:meta="compound">
+            <ld:field name="low_part" ld:level="2" ld:meta="number" ld:subtype="long" ld:bits=""/>
+            <ld:field name="high_part" ld:level="2" ld:meta="number" ld:subtype="long" ld:bits=""/>
+          </ld:field>
+          <ld:field name="quad_part" ld:level="1" ld:meta="number" ld:subtype="int64_t" ld:bits="64"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render_prototype(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
+        self.assertStructEqual(out, """
+        void describe_announcement_flags(dfproto::announcement_flags* proto, df::announcement_flags* dfhack);
+        """)
+        self.output += out + '\n'
+        
        
 
     def _test_render_global_types(self):
