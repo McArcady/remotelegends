@@ -294,29 +294,17 @@ class ProtoRenderer:
 
     def render_type(self, xml):
         meta = xml.get(f'{self.ns}meta')
-        try:
-            if self.proto_ns:
-                out = 'package ' + self.proto_ns + ';\n'
-            else:
-                out = ''
-            out = self.append_comment(xml, out) + '\n'
-            if meta == 'bitfield-type':
-                return out + self.render_bitfield_type(xml)
-            elif meta == 'enum-type':
-                return out + self.render_enum_type(xml)
-            elif meta == 'class-type':
-                return out + self.render_struct_type(xml)
-            elif meta == 'struct-type':
-                return out + self.render_struct_type(xml)
-            raise Exception('not supported: '+xml.tag+': meta='+str(meta))
-            
-        except Exception as e:
-            _,value,tb = sys.exc_info()
-            print('error rendering element %s (meta=%s,name=%s) at line %d: %s' % (
-                xml.tag,
-                meta if meta else '<unknown>',
-                self.get_name(xml, 0),
-                xml.sourceline if xml.sourceline else 0, e
-            ))
-            traceback.print_tb(tb)
-            return ""
+        if self.proto_ns:
+            out = 'package ' + self.proto_ns + ';\n'
+        else:
+            out = ''
+        out = self.append_comment(xml, out) + '\n'
+        if meta == 'bitfield-type':
+            return out + self.render_bitfield_type(xml)
+        elif meta == 'enum-type':
+            return out + self.render_enum_type(xml)
+        elif meta == 'class-type':
+            return out + self.render_struct_type(xml)
+        elif meta == 'struct-type':
+            return out + self.render_struct_type(xml)
+        raise Exception('not supported: '+xml.tag+': meta='+str(meta))

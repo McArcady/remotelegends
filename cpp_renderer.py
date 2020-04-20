@@ -312,28 +312,16 @@ class CppRenderer:
         # high-order type name
         self.global_type_name = xml.get('type-name')
         meta = xml.get(f'{self.ns}meta')
-        try:
-            out = ''
-            if meta == 'bitfield-type':
-                return out + self.render_bitfield_type(xml)
-            elif meta == 'enum-type':
-                return out + self.render_enum_type(xml)
-            elif meta == 'class-type':
-                return out + self.render_struct_type(xml)
-            elif meta == 'struct-type':
-                return out + self.render_struct_type(xml)
-            raise Exception('not supported: '+xml.tag+': meta='+str(meta))
-            
-        except Exception as e:
-            _,value,tb = sys.exc_info()
-            print('error rendering element %s (meta=%s,name=%s) at line %d: %s' % (
-                xml.tag,
-                meta if meta else '<unknown>',
-                self.get_name(xml, 0),
-                xml.sourceline if xml.sourceline else 0, e
-            ))
-            traceback.print_tb(tb)
-            return ""
+        out = ''
+        if meta == 'bitfield-type':
+            return out + self.render_bitfield_type(xml)
+        elif meta == 'enum-type':
+            return out + self.render_enum_type(xml)
+        elif meta == 'class-type':
+            return out + self.render_struct_type(xml)
+        elif meta == 'struct-type':
+            return out + self.render_struct_type(xml)
+        raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_prototype(self, xml):
         tname = xml.get('type-name')

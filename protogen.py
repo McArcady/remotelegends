@@ -4,6 +4,7 @@
 # $ ./protogen.py  ../df-structures && for f in $(ls protogen/*.proto); do echo $f &&  protoc -Iprotogen/ -otest.pb $f ||  break; done
 #
 
+import traceback
 import sys
 import argparse
 import re
@@ -12,6 +13,10 @@ import glob
 from lxml import etree
 
 from global_type_renderer import GlobalTypeRenderer
+
+COLOR_OKBLUE = '\033[94m'
+COLOR_FAIL = '\033[91m'
+COLOR_ENDC = '\033[0m'
 
 
 def main():
@@ -46,7 +51,7 @@ def main():
             print('created ' + outdir)
 
     # xml with all types
-    outxml = open(args.proto_out+'protogen.out.xml', 'wb')
+    outxml = open(args.proto_out+'/protogen.out.xml', 'wb')
 
     # collect types
     transforms = [
@@ -55,23 +60,35 @@ def main():
     filt = indir
     if os.path.isdir(indir):
         filt = indir+'df.*.xml'
+    rc = 0
     for f in glob.glob(filt):
-        print('processing %s...' % (f))
+        sys.stdout.write(COLOR_OKBLUE + 'processing %s...\n' % (f) + COLOR_ENDC)
         xml = etree.parse(f)
         for t in transforms:
             xml = t(xml)
         ns = re.match(r'{(.*)}', xml.getroot().tag).group(1)
         xml.write(outxml)
         for item in xml.getroot():
-            if 'global-type' not in item.tag:
-                print('skipped global-object '+item.get('name'))
-                continue                      
-            rdr = GlobalTypeRenderer(item, ns).set_proto_version(args.version)
-            fnames = rdr.render_to_files(args.proto_out, args.cpp_out, args.h_out)
-            print('created %s' % (', '.join(fnames)))
+            try:
+                if 'global-type' not in item.tag:
+                    print('skipped global-object '+item.get('name'))
+                    continue
+                rdr = GlobalTypeRenderer(item, ns).set_proto_version(args.version)
+                fnames = rdr.render_to_files(args.proto_out, args.cpp_out, args.h_out)
+                print('created %s' % (', '.join(fnames)))
+            except Exception as e:
+                _,_,tb = sys.exc_info()
+                sys.stderr.write(COLOR_FAIL + 'error rendering type %s at line %d: %s\n' % (rdr.get_type_name(), item.sourceline if item.sourceline else 0, e) + COLOR_ENDC)
+                traceback.print_tb(tb)
+                rc = 1
+                break
+        if rc:
+            break
+
     outxml.close()
     print('created %s' % (outxml.name))
+    sys.exit(rc)
 
-    
+
 if __name__ == "__main__":
     main()
