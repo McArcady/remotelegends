@@ -85,16 +85,16 @@ class GlobalTypeRenderer:
             traceback.print_tb(tb)
             return ""
 
-    def render_to_files(self, path):
+    def render_to_files(self, proto_out, cpp_out, h_out):
         proto_name = self.get_type_name() + '.proto'
-        with open(path + '/' + proto_name, 'w') as fil:
+        with open(proto_out + '/' + proto_name, 'w') as fil:
             fil.write(self.render_proto())
         if self.get_meta_type() in ['struct-type', 'class-type']:
             cpp_name = self.get_type_name() + '.cpp'
-            with open(path + '/' + cpp_name, 'w') as fil:
+            with open(cpp_out + '/' + cpp_name, 'w') as fil:
                 fil.write(self.render_cpp())
             h_name = self.get_type_name() + '.h'
-            with open(path + '/' + h_name, 'w') as fil:
+            with open(h_out + '/' + h_name, 'w') as fil:
                 fil.write(self.render_h())
             return proto_name, cpp_name, h_name
         return [proto_name]

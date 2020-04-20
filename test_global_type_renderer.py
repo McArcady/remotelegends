@@ -103,7 +103,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
     def test_render_to_files(self):
         root = etree.fromstring(self.XML)
         sut = GlobalTypeRenderer(root[0], 'ns')
-        fnames = sut.render_to_files('./')
+        fnames = sut.render_to_files('./', './', './')
         self.delete_me = fnames
         # check and compile proto
         with open(fnames[0], 'r') as fil:

@@ -17,13 +17,19 @@ from global_type_renderer import GlobalTypeRenderer
 def main():
     
     # parse args
-    parser = argparse.ArgumentParser(description='Generate proto3 from dfhack structures.')
-    parser.add_argument('input', metavar='DIR|FILE', type=str, nargs='?',
-                        default='./', help='input directory or file (default=.)')
-    parser.add_argument('--output', '-o', metavar='OUTPUT', type=str,
+    parser = argparse.ArgumentParser(description='Generate protobuf and conversion code  from dfhack structures.')
+    parser.add_argument('input', metavar='DIR|FILE', type=str,
+                        help='input directory or xml file (default=.)')
+    parser.add_argument('--proto_out', metavar='PROTODIR', type=str,
                         default='./protogen',
-                        help='output directory (default=./protogen)')
-    parser.add_argument('--version', '-v', metavar='VERSION', type=int,
+                        help='output directory for protobuf files (default=./protogen)')
+    parser.add_argument('--cpp_out', metavar='CPPDIR', type=str,
+                        default='./protogen',
+                        help='output directory for c++ files (default=./protogen)')
+    parser.add_argument('--h_out', metavar='HDIR', type=str,
+                        default='./protogen',
+                        help='output directory for c++ headers (default=./protogen)')
+    parser.add_argument('--version', '-v', metavar='2|3', type=int,
                         default='2', help='protobuf version (default=2)')
     args = parser.parse_args()
 
@@ -34,15 +40,13 @@ def main():
         indir += '/'
     
     # output dir
-    outdir = args.output
-    if not outdir.endswith('/'):
-        outdir += '/'
-    if not os.path.exists(outdir):
-        os.mkdir(outdir)
-        print('created ' + outdir)
+    for outdir in [args.proto_out, args.cpp_out, args.h_out]:
+        if not os.path.exists(outdir):
+            os.mkdir(outdir)
+            print('created ' + outdir)
 
     # xml with all types
-    outxml = open(outdir+'protogen.out.xml', 'wb')
+    outxml = open(args.proto_out+'protogen.out.xml', 'wb')
 
     # collect types
     transforms = [
@@ -63,7 +67,7 @@ def main():
                 print('skipped global-object '+item.get('name'))
                 continue                      
             rdr = GlobalTypeRenderer(item, ns).set_proto_version(args.version)
-            fnames = rdr.render_to_files(outdir)
+            fnames = rdr.render_to_files(args.proto_out, args.cpp_out, args.h_out)
             print('created %s' % (', '.join(fnames)))
     outxml.close()
     print('created %s' % (outxml.name))
