@@ -51,14 +51,14 @@ def main():
         for item in xml.getroot():
             try:
                 tname = item.get('type-name')
-                if item.tag not in ['struct-type', 'class-type', 'enum-type', 'bitfield-type']:
+                if item.tag not in ['struct-type', 'class-type', 'enum-type', 'bitfield-type', 'df-linked-list-type']:
                     continue
                 if not tname:
                     continue
                 if args.type == 'proto':
                     sys.stdout.write(outdir+tname+'.proto'+args.separator)
                     continue
-                if item.tag not in ['struct-type', 'class-type']:
+                if item.tag not in ['struct-type', 'class-type', 'df-linked-list-type']:
                     continue
                 sys.stdout.write(outdir+tname+'.'+args.type+args.separator)
             except Exception as e:
