@@ -10,6 +10,7 @@ class ProtoRenderer:
         self.proto_ns = proto_ns
         self.imports = set()
         self.version = 2
+        self.exceptions = []
     
     TYPES = defaultdict(lambda: None, {
         k:v for k,v in {
@@ -36,6 +37,10 @@ class ProtoRenderer:
         self.version = ver
         return self
 
+    def add_exception_rename(self, path, new_name):
+        self.exceptions.append((path, new_name))
+        return self
+
     @staticmethod
     def convert_type(typ):
         return ProtoRenderer.TYPES[typ]
@@ -46,6 +51,10 @@ class ProtoRenderer:
 
     def get_name(self, xml, value=1):
         name = xml.get('name')
+        for k,v in iter(self.exceptions):
+            found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
+            if found and found[0] is xml:
+                name = v
         if not name:
             name = xml.get(f'{self.ns}anon-name')
         if value < 0:

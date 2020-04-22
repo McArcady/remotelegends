@@ -38,6 +38,9 @@ def main():
                         default='2', help='protobuf version (default=2)')
     parser.add_argument('--quiet', '-q', action='store_true',
                         default=False, help='no output (default: False)')
+    parser.add_argument('--exceptions', metavar='EFILE', type=str,
+                        default=None,
+                        help='exceptions file (default=<none>)')
     args = parser.parse_args()
 
     # input dir
@@ -80,6 +83,8 @@ def main():
                     continue
                 rdr = GlobalTypeRenderer(item, ns)
                 rdr.set_proto_version(args.version)
+                if args.exceptions:
+                    rdr.set_exceptions_file(args.exceptions)
                 fnames = rdr.render_to_files(args.proto_out, args.cpp_out, args.h_out)
                 if not args.quiet:
                     sys.stdout.write('created %s\n' % (', '.join(fnames)))

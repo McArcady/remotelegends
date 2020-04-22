@@ -579,6 +579,28 @@ class TestProtoRenderer(unittest.TestCase):
         """)
 
 
+    #
+    # test exceptions
+    #
+
+    def test_rename_field(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_position_raw">
+          <ld:field name="squad_size" ld:level="1" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        self.sut.add_exception_rename('ld:global-type[@type-name="entity_position_raw"]/ld:field[@name="squad_size"]', 'squad_sz')
+        out = self.sut.render_type(root[0])
+        self.assertStructEqual(out, """
+        message entity_position_raw {
+          required int32 squad_sz = 1;
+        }
+        """)
+    
+
     def _test_render_global_types(self):
         tree = etree.parse('codegen/codegen.out.xml')
         root = tree.getroot()

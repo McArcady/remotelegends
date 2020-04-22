@@ -22,6 +22,9 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         </ld:global-type>        
         </ld:data-definition>
         """
+        self.EXCEPTIONS = """
+        rename /ld:data-definition/ld:global-type/ld:field/ld:field[@name="glorify_hf"] glorify_hfid\n
+        """
         self.PROTO = """
         /* THIS FILE WAS GENERATED. DO NOT EDIT. */
         syntax = "proto2";
@@ -31,7 +34,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         message history_event_reason_info {
           required history_event_reason type = 1;
           oneof data {
-            int32 glorify_hf = 2;
+            int32 glorify_hfid = 2;
             int32 artifact_is_heirloom_of_family_hfid = 3;
           }
         }
@@ -46,7 +49,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
           proto->set_type(static_cast<dfproto::history_event_reason>(dfhack->type));
           switch (dfhack->type) {
             case ::df::enums::history_event_reason::glorify_hf:
-              proto->set_glorify_hf(dfhack->data.glorify_hf);
+              proto->set_glorify_hfid(dfhack->data.glorify_hf);
               break;
             case ::df::enums::history_event_reason::artifact_is_heirloom_of_family_hfid:
               proto->set_artifact_is_heirloom_of_family_hfid(dfhack->data.artifact_is_heirloom_of_family_hfid);
@@ -68,42 +71,40 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         }
         """
         self.maxDiff = None
-        self.delete_me = []
+        self.delete_me = ['exceptions.tmp']
+        with open(self.delete_me[0], 'w') as fil:
+            fil.write(self.EXCEPTIONS)
+        # init SUT
+        root = etree.fromstring(self.XML)
+        self.sut = GlobalTypeRenderer(root[0], 'ns')
+        self.sut.set_exceptions_file(self.delete_me[0])
 
     def tearDown(self):
         for f in self.delete_me:
             os.remove(f)
-        
 
+    
     def assertStructEqual(self, str1, str2):
         self.assertEqual(''.join(str1.split()), ''.join(str2.split()), str1+'/'+str2)
+
+    def test_sut_init(self):
+        self.assertEqual(self.sut.get_type_name(), 'history_event_reason_info')
+        self.assertEqual(self.sut.get_meta_type(), 'struct-type')
     
     def test_render_proto(self):
-        root = etree.fromstring(self.XML)
-        sut = GlobalTypeRenderer(root[0], 'ns')
-        self.assertEqual(sut.get_type_name(), 'history_event_reason_info')
-        self.assertEqual(sut.get_meta_type(), 'struct-type')
-        out = sut.render_proto()
+        out = self.sut.render_proto()
         self.assertStructEqual(out, self.PROTO)
 
     def test_render_cpp(self):
-        root = etree.fromstring(self.XML)
-        sut = GlobalTypeRenderer(root[0], 'ns')
-        self.assertEqual(sut.get_type_name(), 'history_event_reason_info')
-        out = sut.render_cpp()
+        out = self.sut.render_cpp()
         self.assertStructEqual(out, self.CPP)
 
     def test_render_h(self):
-        root = etree.fromstring(self.XML)
-        sut = GlobalTypeRenderer(root[0], 'ns')
-        self.assertEqual(sut.get_type_name(), 'history_event_reason_info')
-        out = sut.render_h()
+        out = self.sut.render_h()
         self.assertStructEqual(out, self.H)
 
     def test_render_to_files(self):
-        root = etree.fromstring(self.XML)
-        sut = GlobalTypeRenderer(root[0], 'ns')
-        fnames = sut.render_to_files('./', './', './')
+        fnames = self.sut.render_to_files('./', './', './')
         self.delete_me = fnames
         # check and compile proto
         with open(fnames[0], 'r') as fil:

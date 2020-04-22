@@ -10,13 +10,24 @@ class GlobalTypeRenderer:
     def __init__(self, xml, ns, proto_ns='dfproto'):
         self.ns = ns
         self.proto_ns = proto_ns
-        self.xml = xml
         self.version = 2
+        self.exceptions = []
+        self.xml = xml
         assert self.xml.tag == '{%s}global-type' % (self.ns)
 
     def set_proto_version(self, ver):
         self.version = ver
         return self
+
+    def set_exceptions_file(self, fname):
+        with open(fname, 'r') as fil:
+            for line in fil:
+                tokens = line.strip().split(' ')
+                if not tokens:
+                    continue
+                if tokens[0] == 'rename':
+                    self.exceptions.append(tokens)
+        
     
     def get_type_name(self):
         tname = self.xml.get('type-name')
@@ -33,6 +44,8 @@ class GlobalTypeRenderer:
 
     def render_proto(self):
         rdr = ProtoRenderer(self.ns, self.proto_ns).set_version(self.version)
+        for tokens in self.exceptions:
+            rdr.add_exception_rename(tokens[1], tokens[2])
         typout = rdr.render_type(self.xml)
         out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += 'syntax = "proto%d";\n' % (self.version)
@@ -44,6 +57,8 @@ class GlobalTypeRenderer:
 
     def render_cpp(self):
         rdr = CppRenderer(self.ns, self.proto_ns, 'DFProto')
+        for tokens in self.exceptions:
+            rdr.add_exception_rename(tokens[1], tokens[2])
         typout = rdr.render_type(self.xml)
         out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += '#include \"%s.h\"\n' % (self.get_type_name())
