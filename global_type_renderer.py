@@ -1,6 +1,3 @@
-import sys
-import traceback
-
 from proto_renderer import ProtoRenderer
 from cpp_renderer import CppRenderer
 
@@ -49,9 +46,9 @@ class GlobalTypeRenderer:
         typout = rdr.render_type(self.xml)
         out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += 'syntax = "proto%d";\n' % (self.version)
+        out += 'option optimize_for = LITE_RUNTIME;\n'
         for imp in rdr.imports:
             out += 'import \"%s.proto\";\n' % (imp)
-        # TODO: declare package 'df'
         out += '\n' + typout
         return out
 

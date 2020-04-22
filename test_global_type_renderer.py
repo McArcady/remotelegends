@@ -28,6 +28,8 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         self.PROTO = """
         /* THIS FILE WAS GENERATED. DO NOT EDIT. */
         syntax = "proto2";
+        option optimize_for = LITE_RUNTIME;
+
         import "history_event_reason.proto";
 
         package dfproto;
