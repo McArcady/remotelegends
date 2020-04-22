@@ -2,6 +2,7 @@
 
 # Output list of generated files
 
+import traceback
 import sys
 import argparse
 import os
@@ -33,7 +34,9 @@ def main():
     
     # output dir
     outdir = args.output
-    assert os.path.exists(outdir), outdir
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
+        print('created ' + outdir)
     if not outdir.endswith('/'):
         outdir += '/'
 
@@ -42,19 +45,28 @@ def main():
         filt = indir + args.filter
     else:
         filt = indir+'df.*.xml'
+    rc = 0
     for f in glob.glob(filt):
         xml = etree.parse(f)
         for item in xml.getroot():
-            tname = item.get('type-name')
-            if not tname:
-                continue
-            if args.type == 'proto':
-                sys.stdout.write(outdir+tname+'.proto'+args.separator)
-                continue
-            if item.tag not in ['struct-type', 'class-type']:
-                continue
-            sys.stdout.write(outdir+tname+'.'+args.type+args.separator)
+            try:
+                tname = item.get('type-name')
+                if item.tag not in ['struct-type', 'class-type', 'enum-type', 'bitfield-type']:
+                    continue
+                if not tname:
+                    continue
+                if args.type == 'proto':
+                    sys.stdout.write(outdir+tname+'.proto'+args.separator)
+                    continue
+                if item.tag not in ['struct-type', 'class-type']:
+                    continue
+                sys.stdout.write(outdir+tname+'.'+args.type+args.separator)
+            except Exception as e:
+                _,_,tb = sys.exc_info()
+                sys.stderr.write('error parsing type %s at line %d: %s\n' % (tname, item.sourceline if item.sourceline else 0, e))
+                traceback.print_tb(tb)
+                sys.exit(1)
 
-    
+
 if __name__ == "__main__":
     main()
