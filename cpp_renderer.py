@@ -169,6 +169,8 @@ class CppRenderer:
         )        
 
     def render_container(self, xml, value=1):
+        if xml.get(f'{self.ns}subtype') == 'df-linked-list':
+            return self.render_global(xml, value)
         name = self.get_name(xml)[0]
         tname = xml.get('pointer-type')
         if tname and not CppRenderer.is_primitive_type(tname):
@@ -181,10 +183,12 @@ class CppRenderer:
             tname = xml.get('type-name')
         if tname == 'pointer':
             tname = 'int32'
+        elif tname == None and len(xml):
+            return self.render_field(xml[0], value, name)
         else:
             tname = self._convert_tname(tname)
         if tname == 'bytes':
-            return '  // type of %s not supported' % (name)
+            return '  // type of %s not supported\n' % (name)
         out = '  for (size_t i=0; i<dfhack->%s.size(); i++) {\n    proto->add_%s(dfhack->%s[i]);\n  }\n' % ( name, name, name )
         return out
     
@@ -323,7 +327,7 @@ class CppRenderer:
         if not meta or meta == 'compound':
             return self.render_compound(xml, value, name)
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':
-            return self.render_simple_field(xml)
+            return self.render_simple_field(xml, value)
         elif meta == 'container' or meta == 'static-array':
             return self.render_container(xml, value)
         elif meta == 'global':

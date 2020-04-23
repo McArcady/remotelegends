@@ -76,7 +76,7 @@ class ProtoRenderer:
     def append_comment(self, xml, line):
         comment = xml.get('comment')
         if comment:
-            return line + ' /* ' + comment + '*/'
+            return line + ' /* ' + comment + ' */'
         return line
         
     def _render_line(self, xml, tname, value, name=None, keyword='required'):
@@ -161,6 +161,10 @@ class ProtoRenderer:
         return self._render_line(xml, 'int32', value, name=name+'_ref', keyword='optional')
 
     def render_container(self, xml, value=1, name=None):
+        if not name:
+            name = self.get_name(xml)
+        if xml.get(f'{self.ns}subtype') == 'df-linked-list':
+            return self.render_global(xml, value)
         tname = xml.get('pointer-type')
         if tname and not ProtoRenderer.is_primitive_type(tname):
             return self.render_pointer(xml, value)
@@ -168,9 +172,14 @@ class ProtoRenderer:
             tname = xml.get('type-name')
         if tname == 'pointer':
             tname = 'int32'
-        else:
+        elif ProtoRenderer.is_primitive_type(tname):
             tname = self._convert_tname(tname)
-        return self._render_line(xml, tname, value, name, keyword='repeated')
+            return self._render_line(xml, tname, value, name, keyword='repeated')
+        elif len(xml):
+            return self.render_field(xml[0], value, name)
+        # container of unknown type
+        return '  // ignored container %s' % (name)
+            
     
     def render_global(self, xml, value=1):
         tname = xml.get('type-name')
@@ -282,7 +291,7 @@ class ProtoRenderer:
         out  = self.render_bitfield_type(xml, tname)
         out += self.ident(xml) + self._render_line(xml, tname, value, name) + '\n'
         return out
-        
+    
 
     # main renderer
 

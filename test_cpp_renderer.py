@@ -128,26 +128,26 @@ class TestCppRenderer(unittest.TestCase):
 #         """)
 #         self.output += out + '\n'
 
-#     def test_render_global_type_struct_with_list_link(self):
-#         XML = """
-#         <ld:data-definition xmlns:ld="ns">
-#         <ld:global-type ld:meta="class-type" ld:level="0" type-name="projectile" original-name="projst" df-list-link-type="proj_list_link" df-list-link-field="link" key-field="id">
-#           <ld:field ld:level="1" ld:meta="pointer" name="link" type-name="proj_list_link" ld:is-container="true">
-#             <ld:item ld:level="2" ld:meta="global" type-name="proj_list_link"/>
-#         </ld:field>
-#         </ld:global-type>
-#         </ld:data-definition>
-#         """
-#         root = etree.fromstring(XML)
-#         out = self.sut.render_type(root[0])
-#         # avoid recursive import
-#         self.assertEqual(len(self.sut.imports), 0)
-#         self.assertStructEqual(out, """
-#         message projectile {
-#           int32 link_ref = 1;
-#         }
-#         """)
-#         self.output += out + '\n'
+    # def test_render_global_type_struct_with_list_link(self):
+    #     XML = """
+    #     <ld:data-definition xmlns:ld="ns">
+    #     <ld:global-type ld:meta="class-type" ld:level="0" type-name="projectile" original-name="projst" df-list-link-type="proj_list_link" df-list-link-field="link" key-field="id">
+    #       <ld:field ld:level="1" ld:meta="pointer" name="link" type-name="proj_list_link" ld:is-container="true">
+    #         <ld:item ld:level="2" ld:meta="global" type-name="proj_list_link"/>
+    #     </ld:field>
+    #     </ld:global-type>
+    #     </ld:data-definition>
+    #     """
+    #     root = etree.fromstring(XML)
+    #     out = self.sut.render_type(root[0])
+    #     # avoid recursive import
+    #     self.assertEqual(len(self.sut.imports), 0)
+    #     self.assertStructEqual(out, """
+    #     message projectile {
+    #       int32 link_ref = 1;
+    #     }
+    #     """)
+    #     self.output += out + '\n'
 
     def test_render_global_type_struct_with_enum_and_union(self):
         XML = """
@@ -396,20 +396,21 @@ class TestCppRenderer(unittest.TestCase):
         """)
         self.output += out + '\n'
     
-    # def test_render_field_container(self):
-    #     XML = """
-    #     <ld:data-definition xmlns:ld="ns">
-    #       <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" type-name="int16_t" name="talk_choices" ld:is-container="true">
-    #         <ld:item ld:level="2" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
-    #     </ld:field>
-    #     </ld:data-definition>
-    #     """
-    #     root = etree.fromstring(XML)
-    #     out = self.sut.render_field(root[0])
-    #     self.assertEqual(len(self.sut.imports), 0)
-    #     self.assertStructEqual(out, """
-    #     repeated int32 talk_choices = 1;
-    #     """)
+    def test_render_field_job_list_link(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="df-linked-list" name="list" type-name="job_list_link" ld:is-container="true">
+          <ld:item ld:level="2" ld:meta="global" type-name="job_list_link"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render_field(root[0])
+        self.assertEqual(list(self.sut.imports), [])
+        self.assertEqual(list(self.sut.dfproto_imports), ['job_list_link'])
+        self.assertStructEqual(out, """
+        describe_job_list_link(proto->mutable_list(), &dfhack->list);
+        """)
     
     # def test_render_field_container_pointer_to_primitive(self):
     #     XML = """

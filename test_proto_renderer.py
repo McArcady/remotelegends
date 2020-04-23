@@ -313,6 +313,21 @@ class TestProtoRenderer(unittest.TestCase):
         required talk_choice_type type = 1;
         """)
     
+    def test_render_field_job_list_link(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="df-linked-list" name="list" type-name="job_list_link" ld:is-container="true">
+          <ld:item ld:level="2" ld:meta="global" type-name="job_list_link"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render_field(root[0])
+        self.assertEqual(list(self.sut.imports), ['job_list_link'])
+        self.assertStructEqual(out, """
+        required job_list_link list = 1;
+        """)
+    
     def test_render_field_container(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -352,6 +367,29 @@ class TestProtoRenderer(unittest.TestCase):
           repeated T_region_masks_inner value = 1;
         }
         repeated T_region_masks region_masks = 1;
+        """)
+
+    @unittest.skip('FIXME')
+    def test_render_field_container_of_anon_compound(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="postings" comment="entries never removed" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="pointer" ld:is-container="true">
+                <ld:item ld:meta="compound" ld:level="2">
+                <ld:field name="idx" comment="equal to position in vector" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+              </ld:item>
+            </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        out = self.sut.render_field(root[0])
+        self.assertEqual(len(self.sut.imports), 0)
+        self.assertStructEqual(out, """
+        message T_postings {
+          required int32 idx = 1; /* equal to position in vector */
+        }
+        repeated T_postings postings = 1;
         """)
     
     def test_render_field_container_pointer_to_primitive(self):
