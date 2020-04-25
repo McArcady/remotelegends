@@ -105,7 +105,7 @@ class CppRenderer:
             out += ' /* ' + comment + '*/'
         return out + '\n'
 
-    def render_enum_type(self, xml, tname=None, prefix=None, extra_ident=''):
+    def render_type_enum(self, xml, tname=None, prefix=None, extra_ident=''):
         if not tname:            
             tname = xml.get('type-name')
         assert tname
@@ -115,14 +115,21 @@ class CppRenderer:
         }
         """ % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
 
-    def render_enum(self, xml, value=1):
+    def render_field_enum(self, xml, value=1):
         # record enum descriptor in case it is needed later as a discriminator for an union
         self.last_enum_descr = xml
         name = self.get_name(xml, value)
-        tname = xml.get('type-name')
-        out = '  proto->set_%s(static_cast<dfproto::%s>(dfhack->%s));\n' % (
-            name[0], tname, name[1]
-        )
+        if xml.get(f'{self.ns}typedef-name'):
+            # local enum
+            tname = self.get_typedef_name(xml, name)
+            out = '  proto->set_%s(static_cast<dfproto::%s_%s>(dfhack->%s));\n' % (
+                name[0], self.global_type_name, tname, name[1]
+            )
+        else:
+            tname = xml.get('type-name')
+            out = '  proto->set_%s(static_cast<dfproto::%s>(dfhack->%s));\n' % (
+                name[0], tname, name[1]
+            )
         return out
 
     
@@ -174,7 +181,7 @@ class CppRenderer:
         name = self.get_name(xml)[0]
         tname = xml.get('pointer-type')
         if tname and not CppRenderer.is_primitive_type(tname):
-            self.imports.add(tname)
+#            self.imports.add(tname)
             return """
             for (size_t i=0; i<dfhack->%s.size(); i++) {
 	      proto->add_%s_ref(dfhack->%s[i]->id);
@@ -199,10 +206,12 @@ class CppRenderer:
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'enum':
             self.imports.add(tname)
-            return self.render_enum(xml)
+            return self.render_field_enum(xml)
         if subtype == 'bitfield':
             self.imports.add(tname)
             return self.render_bitfield(xml, value)
+        if subtype == 'df-linked-list':
+            self.imports.add(tname)
         self.dfproto_imports.add(tname)
         return '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
             tname, name[0], name[1]
@@ -244,7 +253,7 @@ class CppRenderer:
     def render_compound(self, xml, value=1, name=None):
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'enum':
-            return self.render_enum(xml, value)
+            return self.render_field_enum(xml, value)
         if subtype == 'bitfield':
             return self.render_bitfield(xml, value)
         
@@ -344,7 +353,7 @@ class CppRenderer:
         if meta == 'bitfield-type':
             return out + self.render_bitfield_type(xml)
         elif meta == 'enum-type':
-            return out + self.render_enum_type(xml)
+            return out + self.render_type_enum(xml)
         elif meta == 'class-type':
             return out + self.render_struct_type(xml)
         elif meta == 'struct-type':
