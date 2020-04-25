@@ -81,7 +81,13 @@ class CppRenderer:
     def ident(self, xml):
         ident = xml.get(f'{self.ns}level') or 1
         return '  ' * int(ident)
-        
+
+    def append_comment(self, xml, line):
+        comment = xml.get('comment')
+        if comment:
+            return line + ' /* ' + comment + ' */'
+        return line
+    
     def _render_line(self, xml, tname, value, name=None):
         out = ''
         if tname:
@@ -127,6 +133,7 @@ class CppRenderer:
             )
         else:
             tname = xml.get('type-name')
+            self.dfproto_imports.add(tname)
             out = '  proto->set_%s(static_cast<dfproto::%s>(dfhack->%s));\n' % (
                 name[0], tname, name[1]
             )
@@ -170,7 +177,7 @@ class CppRenderer:
             return '  ' + 'proto->set_%s(*dfhack->%s);\n' % (
                 name, name
             )
-        self.imports.add(tname)
+        self.dfproto_imports.add(tname)
         return '  ' + 'proto->set_%s_ref(dfhack->%s->id);\n' % (
             name, name
         )        
@@ -190,6 +197,7 @@ class CppRenderer:
             tname = xml.get('type-name')
         if tname == 'pointer':
             tname = 'int32'
+            name += '_ref'
         elif tname == None and len(xml):
             return self.render_field(xml[0], value, name)
         else:
@@ -226,14 +234,17 @@ class CppRenderer:
         out = 'void %s::describe_%s(%s::%s* proto, df::%s* dfhack) {\n' % (
             self.cpp_ns, tname, self.proto_ns, tname, tname
         )
+        value = 1
         parent = xml.get('inherits-from')
         if parent:
             out += '  ' + 'describe_%s(proto->mutable_parent(), dfhack);\n' % ( parent )
             self.dfproto_imports.add(parent)
+            value += 1
         for item in xml.findall(f'{self.ns}field'):
-            name = self.get_name(item)[0]
+            name = self.get_name(item, value)[0]
             tname = item.get(f'{self.ns}subtype') or item.get('type-name')
-            out += self.render_field(item)
+            out += self.render_field(item, value)
+            value += 1
         out += '}\n'
         return out
 
@@ -350,6 +361,7 @@ class CppRenderer:
         self.global_type_name = xml.get('type-name')
         meta = xml.get(f'{self.ns}meta')
         out = ''
+        out = self.append_comment(xml, out) + '\n'
         if meta == 'bitfield-type':
             return out + self.render_bitfield_type(xml)
         elif meta == 'enum-type':

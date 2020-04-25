@@ -9,7 +9,7 @@ from cpp_renderer import CppRenderer
 from proto_renderer import ProtoRenderer
 
 
-class TestRenderers(unittest.TestCase):
+class TestRenderField(unittest.TestCase):
             
     def setUp(self):
         self.sut_proto = ProtoRenderer('ns')
@@ -47,7 +47,7 @@ class TestRenderers(unittest.TestCase):
         proto->set_type(static_cast<dfproto::talk_choice_type>(dfhack->type));
         """
         IMPORTS = ['talk_choice_type']
-        DFPROTO_IMPORTS = []
+        DFPROTO_IMPORTS = ['talk_choice_type']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
     def test_render_field_local_enum(self):
@@ -413,7 +413,7 @@ class TestRenderers(unittest.TestCase):
         describe_T_unk(proto->mutable_unk(), dfhack->unk);
         """
         IMPORTS = []
-        DFPROTO_IMPORTS = []
+        DFPROTO_IMPORTS = ['entity_event']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
     def test_render_field_anon_compound(self):
@@ -439,6 +439,6 @@ class TestRenderers(unittest.TestCase):
         describe_T_anon_1(proto->mutable_anon_1(), dfhack->anon_1);
         """
         IMPORTS = ['item_type']
-        DFPROTO_IMPORTS = []
+        DFPROTO_IMPORTS = ['item_type']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
     
