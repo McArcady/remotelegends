@@ -27,9 +27,10 @@ class TestRenderField(unittest.TestCase):
         self.sut_cpp.global_type_name = TYPE
         out = self.sut_cpp.render_field(xml)
         self.assertStructEqual(out, CPP)
+        self.assertEqual(list(self.sut_cpp.imports), IMPORTS)
         self.assertEqual(list(self.sut_cpp.dfproto_imports), DFPROTO_IMPORTS)
 
-    
+
     #
     # enum
     #
@@ -47,7 +48,7 @@ class TestRenderField(unittest.TestCase):
         proto->set_type(static_cast<dfproto::talk_choice_type>(dfhack->type));
         """
         IMPORTS = ['talk_choice_type']
-        DFPROTO_IMPORTS = ['talk_choice_type']
+        DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
     def test_render_field_local_enum(self):
@@ -262,7 +263,7 @@ class TestRenderField(unittest.TestCase):
         auto describe_T_postings = [](dfproto::mytype_T_postings* proto, df::mytype::T_postings* dfhack) {
           proto->set_idx(dfhack->idx);
         };
-        describe_T_postings(proto->mutable_postings(), dfhack->postings);
+        describe_T_postings(proto->mutable_postings(), &dfhack->postings);
         
         """
         IMPORTS = []
@@ -360,7 +361,7 @@ class TestRenderField(unittest.TestCase):
 	    proto->add_entities(dfhack->entities[i]);
 	  }
         };
-        describe_T_map(proto->mutable_map(), dfhack->map);
+        describe_T_map(proto->mutable_map(), &dfhack->map);
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -410,7 +411,7 @@ class TestRenderField(unittest.TestCase):
           proto->set_event_ref(dfhack->event->id);
           proto->set_anon_2(dfhack->anon_2);
         };
-        describe_T_unk(proto->mutable_unk(), dfhack->unk);
+        describe_T_unk(proto->mutable_unk(), &dfhack->unk);
         """
         IMPORTS = []
         DFPROTO_IMPORTS = ['entity_event']
@@ -436,9 +437,9 @@ class TestRenderField(unittest.TestCase):
           proto->set_x(dfhack->x);
           proto->set_item_type(static_cast<dfproto::item_type>(dfhack->item_type));
         };
-        describe_T_anon_1(proto->mutable_anon_1(), dfhack->anon_1);
+        describe_T_anon_1(proto->mutable_anon_1(), &dfhack->anon_1);
         """
         IMPORTS = ['item_type']
-        DFPROTO_IMPORTS = ['item_type']
+        DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
     

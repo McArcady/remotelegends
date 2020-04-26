@@ -171,7 +171,7 @@ class ProtoRenderer:
 
     def render_container(self, xml, value=1, name=None):
         if not name:
-            name = self.get_name(xml)
+            name = self.get_name(xml, value)
         if xml.get(f'{self.ns}subtype') == 'df-linked-list':
             return self.render_global(xml, value)
         tname = xml.get('pointer-type')
@@ -183,7 +183,7 @@ class ProtoRenderer:
         if tname == 'pointer':
             # convert to list of refs to avoid circular dependencies
             tname = 'int32'
-        if not tname:
+        if not tname and len(xml) > 0:
             # local anon compound
             tname = 'T_'+name
             out = self.render_pointer(xml[0], value, name, keyword='repeated')
@@ -196,7 +196,7 @@ class ProtoRenderer:
         elif len(xml):
             return self.render_field(xml[0], value, name)
         # container of unknown type
-        return '  // ignored container %s' % (name)
+        return '  // ignored container %s\n' % (name)
             
     
     def render_global(self, xml, value=1):

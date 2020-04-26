@@ -133,7 +133,6 @@ class CppRenderer:
             )
         else:
             tname = xml.get('type-name')
-            self.dfproto_imports.add(tname)
             out = '  proto->set_%s(static_cast<dfproto::%s>(dfhack->%s));\n' % (
                 name[0], tname, name[1]
             )
@@ -279,7 +278,7 @@ class CppRenderer:
             name = self.get_name(xml, value)[0]
         tname = self.get_typedef_name(xml, name)
         out  = self.render_anon_compound(xml, name)
-        out += '  ' + 'describe_%s(proto->mutable_%s(), dfhack->%s);\n' % (
+        out += '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
             tname, name, name
         )
         return out

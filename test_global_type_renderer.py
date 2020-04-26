@@ -46,7 +46,6 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         #include "history_event_reason_info.h"
         #include "df/history_event_reason.h"
         #include "history_event_reason.pb.h"
-        #include "history_event_reason.h"
 
 	void DFProto::describe_history_event_reason_info(dfproto::history_event_reason_info* proto, df::history_event_reason_info* dfhack) {
           proto->set_type(static_cast<dfproto::history_event_reason>(dfhack->type));

@@ -252,7 +252,7 @@ class TestRenderType(unittest.TestCase):
         }
         """
         IMPORTS = ['history_event_reason']
-        DFPROTO_IMPORTS = ['history_event_reason']
+        DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_render_global_type_struct_with_list_link(self):
@@ -363,7 +363,7 @@ class TestRenderType(unittest.TestCase):
 	      proto->add_entities(dfhack->entities[i]);
 	    }
           };
-          describe_T_map(proto->mutable_map(), dfhack->map);
+          describe_T_map(proto->mutable_map(), &dfhack->map);
         }
         """
         IMPORTS = []
