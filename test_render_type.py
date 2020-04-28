@@ -90,7 +90,7 @@ class TestRenderType(unittest.TestCase):
           conflict_level_Encounter = 0;
           conflict_level_Horseplay = 1;
           conflict_level_None = -1;
-          conflict_level_anon_m3 = -3;
+          conflict_level_anon_1 = -3;
         }
         """
         CPP = None
@@ -215,6 +215,37 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = ['coord']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
+    def test_render_global_type_struct_with_anon_fields(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_site_link">
+          <ld:field name="target" ref-target="world_site" comment="world.world_data.sites vector" ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          <ld:field name="entity_id" ref-target="historical_entity" ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          <ld:field ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          <ld:field ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message entity_site_link {
+          required int32 target = 1; /* world.world_data.sites vector */
+          required int32 entity_id = 2;
+          required int32 anon_1 = 3;
+          required int32 anon_2 = 4;
+        }
+        """
+        CPP = """
+        void DFProto::describe_entity_site_link(dfproto::entity_site_link* proto, df::entity_site_link* dfhack) {
+          proto->set_target(dfhack->target);
+	  proto->set_entity_id(dfhack->entity_id);
+          proto->set_anon_1(dfhack->anon_1);
+	  proto->set_anon_2(dfhack->anon_2);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
     def test_render_global_type_struct_with_enum_and_union(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -319,19 +350,19 @@ class TestRenderType(unittest.TestCase):
         PROTO = """
         message adventure_item {
           required adventure_item_interact_choicest parent = 1; /* parent type */
-          optional int32 anon_2_ref = 2;
+          optional int32 anon_1_ref = 2;
         }
         """
         CPP = """
         void DFProto::describe_adventure_item(dfproto::adventure_item* proto, df::adventure_item* dfhack) {
 	  describe_adventure_item_interact_choicest(proto->mutable_parent(), dfhack);
-	  proto->set_anon_2_ref(dfhack->anon_2->id);
+	  proto->set_anon_1_ref(dfhack->anon_1->id);
         }
         """
         IMPORTS = ['adventure_item_interact_choicest']
         DFPROTO_IMPORTS = ['adventure_item_interact_choicest', 'item']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
-        
+    
     def test_render_global_type_with_anon_compound(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">

@@ -19,6 +19,11 @@ class CppRenderer:
         #
         self.version = 2
         self.exceptions = []
+        # FIXME: mutualize with proto_renderer
+        # cache for last anon field
+        self.anon_xml = None
+        # id of last anon field
+        self.anon_value = 0
         
     def set_version(self, ver):
         self.version = ver
@@ -66,10 +71,13 @@ class CppRenderer:
                 return v, name
         if not name:
             name = xml.get(f'{self.ns}anon-name')
-        if value < 0:
-            value = 'm'+str(-value)
+        # if value < 0:
+        #     value = 'm'+str(-value)
         if not name:
-            name = 'anon_' + str(value)
+            if self.anon_xml != xml:
+                self.anon_value += 1
+                self.anon_xml = xml
+            name = 'anon_' + str(self.anon_value)
         return name, name
 
     def get_typedef_name(self, xml, name):

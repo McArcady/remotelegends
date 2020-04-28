@@ -11,6 +11,10 @@ class ProtoRenderer:
         self.imports = set()
         self.version = 2
         self.exceptions = []
+        # cache for last anon field
+        self.anon_xml = None
+        # id of last anon field
+        self.anon_value = 0
     
     TYPES = defaultdict(lambda: None, {
         k:v for k,v in {
@@ -57,10 +61,11 @@ class ProtoRenderer:
                 name = v
         if not name:
             name = xml.get(f'{self.ns}anon-name')
-        if value < 0:
-            value = 'm'+str(-value)
         if not name:
-            name = 'anon_' + str(value)
+            if self.anon_xml != xml:
+                self.anon_value += 1
+                self.anon_xml = xml
+            name = 'anon_' + str(self.anon_value)
         return name
 
     def get_typedef_name(self, xml, name):
@@ -264,7 +269,8 @@ class ProtoRenderer:
         for item in xml.findall(f'{self.ns}field'):
             meta = item.get(f'{self.ns}meta')
             if meta == 'compound':
-                itname = 'T_anon_'+str(value)
+                itname = 'T_anon_' + str(self.anon_value)
+                self.anon_value += 1
                 predecl += self.render_anon_compound(item, tname=itname)
                 fields += self.ident(item) + '  ' + self._render_line(item, itname, value, keyword='')
             else:
