@@ -56,9 +56,6 @@ def main():
             if not args.quiet:
                 sys.stdout.write('created %s\n' % (outdir))
 
-    # xml with all types
-    outxml = open(args.proto_out+'/protogen.out.xml', 'wb')
-
     # collect types
     transforms = [
         etree.XSLT(etree.parse(os.path.dirname(indir)+'/'+f)) for f in ['lower-1.xslt', 'lower-2.xslt']
@@ -70,6 +67,12 @@ def main():
     for f in glob.glob(filt):
         if not args.quiet:
             sys.stdout.write(COLOR_OKBLUE + 'processing %s...\n' % (f) + COLOR_ENDC)
+
+        # xml with all types of the structure
+        struct_name = re.compile('df.(.*).xml').match(os.path.basename(f)).group(1)
+        outxml = open(args.proto_out+'/df.%s.out.xml' % (struct_name), 'wb')
+        assert struct_name, outxml
+        
         xml = etree.parse(f)
         for t in transforms:
             xml = t(xml)
@@ -94,12 +97,13 @@ def main():
                 traceback.print_tb(tb)
                 rc = 1
                 break
+
+        outxml.close()
+        if not args.quiet:
+            sys.stdout.write('created %s\n' % (outxml.name))
         if rc:
             break
 
-    outxml.close()
-    if not args.quiet:
-        sys.stdout.write('created %s\n' % (outxml.name))
     sys.exit(rc)
 
 
