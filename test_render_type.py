@@ -246,6 +246,90 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
+    def test_render_global_type_struct_with_local_struct_and_anon_fields(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_site_link">
+          <ld:field ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="pointer" ld:is-container="true">
+              <ld:item ld:meta="compound" ld:level="2">
+                <ld:field init-value="-1" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+                <ld:field name="pos" type-name="coord" ld:level="3" ld:meta="global"/>
+                <ld:field ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+              </ld:item>
+            </ld:item>
+          </ld:field>
+          <ld:field ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message entity_site_link {
+          required int32 anon_1 = 1;
+          message T_anon_2 {
+            required int32 anon_1 = 1;
+            required coord pos = 2;
+            required int32 anon_2 = 3;
+          }
+          repeated T_anon_2 anon_2 = 2;
+          required int32 anon_3 = 3;
+        }
+        """
+        CPP = """
+        void DFProto::describe_entity_site_link(dfproto::entity_site_link* proto, df::entity_site_link* dfhack) {
+          proto->set_anon_1(dfhack->anon_1);
+          auto describe_T_anon_2 = [](dfproto::entity_site_link_T_anon_2* proto, df::entity_site_link::T_anon_2* dfhack) {
+            proto->set_anon_1(dfhack->anon_1);
+            describe_coord(proto->mutable_pos(), &dfhack->pos);
+            proto->set_anon_2(dfhack->anon_2);
+          };
+          describe_T_anon_2(proto->mutable_anon_2(), &dfhack->anon_2);
+	  proto->set_anon_3(dfhack->anon_3);
+        }
+        """
+        IMPORTS = ['coord']
+        DFPROTO_IMPORTS = ['coord']
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+    def test_render_global_type_struct_with_local_bitfield_and_anon_flags(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_site_link">
+        <ld:field ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        <ld:field ld:subtype="bitfield" name="flags" base-type="uint32_t" ld:level="1" ld:meta="compound">
+          <ld:field name="residence" comment="site is residence" ld:level="2" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+          <ld:field ld:level="2" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+        </ld:field>  
+        <ld:field ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message entity_site_link {
+          required int32 anon_1 = 1;
+          message T_flags {
+            enum mask {
+              residence = 0x0; /* site is residence */
+              anon_1 = 0x1;
+            }
+            required fixed32 flags = 1;
+          }
+          required T_flags flags = 2;
+          required int32 anon_2 = 3;
+        }
+        """
+        CPP = """
+        void DFProto::describe_entity_site_link(dfproto::entity_site_link* proto, df::entity_site_link* dfhack) {
+          proto->set_anon_1(dfhack->anon_1);
+          proto->mutable_flags()->set_flags(dfhack->flags.whole);
+	  proto->set_anon_2(dfhack->anon_2);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
     def test_render_global_type_struct_with_enum_and_union(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">

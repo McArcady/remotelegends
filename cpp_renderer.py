@@ -1,13 +1,14 @@
-from collections import defaultdict
 import sys
 import traceback
 
+from abstract_renderer import AbstractRenderer
 
-class CppRenderer:
+
+class CppRenderer(AbstractRenderer):
 
     def __init__(self, xml_ns, proto_ns, cpp_ns):
-        # namespaces: xml, protobuf, cpp
-        self.ns = '{'+xml_ns+'}'
+        AbstractRenderer.__init__(self, xml_ns)
+        # namespaces: protobuf, cpp
         self.proto_ns = proto_ns
         self.cpp_ns = cpp_ns
         # external dfhack & protobuf dependencies
@@ -16,110 +17,19 @@ class CppRenderer:
         self.dfproto_imports = set()
         # guess of the discriminant element for union
         self.last_enum_descr = None
-        #
-        self.version = 2
-        self.exceptions = []
-        # FIXME: mutualize with proto_renderer
-        # cache for last anon field
-        self.anon_xml = None
-        # id of last anon field
-        self.anon_value = 0
-        
-    def set_version(self, ver):
-        self.version = ver
-        return self
+        self.global_type_name = None
 
-    def add_exception_rename(self, path, new_name):
-        self.exceptions.append((path, new_name))
-        return self
-    
-    TYPES = defaultdict(lambda: None, {
-        k:v for k,v in {
-            'bool': 'bool',
-            'int8_t': 'int32',
-            'int16_t': 'int32',
-            'int32_t': 'int32',
-            'int64_t': 'int64',
-            'uint8_t': 'uint32',
-            'uint16_t': 'uint32',
-            'uint32_t': 'uint32',
-            'uint64_t': 'uint64',
-            'long': 'int64',
-            's-float': 'float',
-            'd-float': 'double',
-            'stl-string': 'string',
-            'static-string': 'string',
-            'ptr-string': 'string',
-            'stl-fstream': 'bytes',
-            'padding': 'bytes',
-        }.items()})
-
-    @staticmethod
-    def convert_type(typ):
-        return CppRenderer.TYPES[typ]
-
-    @staticmethod
-    def is_primitive_type(typ):
-        return typ in CppRenderer.TYPES.keys()
-
-    def get_name(self, xml, value=1):
-        name = xml.get('name')
-        for k,v in iter(self.exceptions):
-            found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
-            if found and found[0] is xml:
-                # return protobuf name and dfhack name
-                return v, name
-        if not name:
-            name = xml.get(f'{self.ns}anon-name')
-        # if value < 0:
-        #     value = 'm'+str(-value)
-        if not name:
-            if self.anon_xml != xml:
-                self.anon_value += 1
-                self.anon_xml = xml
-            name = 'anon_' + str(self.anon_value)
-        return name, name
-
-    def get_typedef_name(self, xml, name):
-        tname = xml.get(f'{self.ns}typedef-name')
-        if not tname:
-            tname = 'T_' + name
-        return tname
-
-    def ident(self, xml):
-        ident = xml.get(f'{self.ns}level') or 1
-        return '  ' * int(ident)
-
-    def append_comment(self, xml, line):
-        comment = xml.get('comment')
-        if comment:
-            return line + ' /* ' + comment + ' */'
-        return line
-    
-    def _render_line(self, xml, tname, value, name=None):
-        out = ''
-        if tname:
-            out += tname + ' '
-        if not name:
-            name = self.get_name(xml, value)[0]
-        out += name + ' = ' + str(value) + ';'
-        comment = xml.get('comment')
-        if comment:
-            out += ' /* ' + comment + '*/'
-        return out + '\n'
+    def copy(self):
+        copy = CppRenderer(self.ns, self.proto_ns, self.cpp_ns)
+        copy.imports = self.imports
+        copy.dfproto_imports = self.dfproto_imports
+        copy.global_type_name = self.global_type_name
+        return copy
 
     
     # enumerations
 
-    def _render_enum_item(self, xml, tname, value, prefix=''):
-        name = self.get_name(xml, value)[0]
-        out = prefix + name + ' = ' + str(value) + ';'
-        comment = xml.get('comment')
-        if comment:
-            out += ' /* ' + comment + '*/'
-        return out + '\n'
-
-    def render_type_enum(self, xml, tname=None, prefix=None, extra_ident=''):
+    def render_type_enum(self, xml, tname=None, extra_ident=''):
         if not tname:            
             tname = xml.get('type-name')
         assert tname
@@ -129,10 +39,10 @@ class CppRenderer:
         }
         """ % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
 
-    def render_field_enum(self, xml, value=1):
+    def render_field_enum(self, xml):
         # record enum descriptor in case it is needed later as a discriminator for an union
         self.last_enum_descr = xml
-        name = self.get_name(xml, value)
+        name = self.get_name(xml)
         if xml.get(f'{self.ns}typedef-name'):
             # local enum
             tname = self.get_typedef_name(xml, name)
@@ -158,25 +68,19 @@ class CppRenderer:
             tname = 'bytes'
         return tname
 
-    def render_simple_field(self, xml, value=1):
-        # tname = xml.get(f'{self.ns}subtype')
-        # if tname == 'enum' or tname == 'bitfield':
-        #     tname = xml.get('type-name')
-        #     self.imports.add(tname)
-        # else:
-        #     tname = self._convert_tname(tname)
-        name = self.get_name(xml, value)
+    def render_simple_field(self, xml):
+        name = self.get_name(xml)
         return '  ' + 'proto->set_%s(dfhack->%s);\n' % (
             name[0], name[1]
         )
 
-    def render_pointer(self, xml, value=1, name=None):
+    def render_pointer(self, xml, name=None):
         if not name:
-            name = self.get_name(xml, value)[0]
+            name = self.get_name(xml)[0]
         tname = xml.get('type-name')
         if tname == None:
             if len(xml):
-                return self.render_field(xml[0], value, name)
+                return self.render_field(xml[0], name)
             else:
                 # pointer to anon type
                 return '  // ignored pointer to unknown type'
@@ -189,9 +93,9 @@ class CppRenderer:
             name, name
         )        
 
-    def render_container(self, xml, value=1):
+    def render_container(self, xml):
         if xml.get(f'{self.ns}subtype') == 'df-linked-list':
-            return self.render_global(xml, value)
+            return self.render_global(xml)
         name = self.get_name(xml)[0]
         tname = xml.get('pointer-type')
         if tname and not CppRenderer.is_primitive_type(tname):
@@ -206,7 +110,7 @@ class CppRenderer:
             tname = 'int32'
             name += '_ref'
         elif tname == None and len(xml):
-            return self.render_field(xml[0], value, name)
+            return self.render_field(xml[0], name)
         else:
             tname = self._convert_tname(tname)
         if tname == 'bytes':
@@ -214,8 +118,8 @@ class CppRenderer:
         out = '  for (size_t i=0; i<dfhack->%s.size(); i++) {\n    proto->add_%s(dfhack->%s[i]);\n  }\n' % ( name, name, name )
         return out
     
-    def render_global(self, xml, value=1):
-        name = self.get_name(xml, value)
+    def render_global(self, xml):
+        name = self.get_name(xml)
         tname = xml.get('type-name')
         assert tname
         subtype = xml.get(f'{self.ns}subtype')
@@ -224,7 +128,7 @@ class CppRenderer:
             return self.render_field_enum(xml)
         if subtype == 'bitfield':
             self.imports.add(tname)
-            return self.render_bitfield(xml, value)
+            return self.render_bitfield(xml)
         if subtype == 'df-linked-list':
             self.imports.add(tname)
         self.dfproto_imports.add(tname)
@@ -248,9 +152,9 @@ class CppRenderer:
             self.dfproto_imports.add(parent)
             value += 1
         for item in xml.findall(f'{self.ns}field'):
-            name = self.get_name(item, value)[0]
+            name = self.get_name(item)[0]
             tname = item.get(f'{self.ns}subtype') or item.get('type-name')
-            out += self.render_field(item, value)
+            out += self.render_field(item)
             value += 1
         out += '}\n'
         return out
@@ -268,24 +172,24 @@ class CppRenderer:
         out += '};\n'
         return out
 
-    def render_compound(self, xml, value=1, name=None):
+    def render_compound(self, xml, name=None):
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'enum':
-            return self.render_field_enum(xml, value)
+            return self.render_field_enum(xml)
         if subtype == 'bitfield':
-            return self.render_bitfield(xml, value)
+            return self.render_bitfield(xml)
         
         anon = xml.get(f'{self.ns}anon-compound')
         union = xml.get('is-union')
         if union == 'true':
             if anon == 'true':
-                return self.render_union(xml, 'anon', value)
-            return self.render_union(xml, value)
+                return self.render_union(xml, 'anon')
+            return self.render_union(xml)
 
         if not name:
-            name = self.get_name(xml, value)[0]
+            name = self.get_name(xml)[0]
         tname = self.get_typedef_name(xml, name)
-        out  = self.render_anon_compound(xml, name)
+        out  = self.copy().render_anon_compound(xml, name)
         out += '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
             tname, name, name
         )
@@ -294,14 +198,14 @@ class CppRenderer:
 
     # unions
 
-    def render_union(self, xml, tname, value=1):
+    def render_union(self, xml, tname=None):
         name = self.get_name(xml)
         if self.last_enum_descr == None:
             return '// failed to find a discriminator for union %s\n' % (self.get_typedef_name(xml, name[0]))
         tname = self.last_enum_descr.get('type-name')
         out  = '  switch (dfhack->type) {\n'
         for item in xml.findall(f'{self.ns}field'):
-            iname = self.get_name(item,value)
+            iname = self.get_name(item)
             out += '    case ::df::enums::%s::%s:\n' % (tname, iname[1])
             out += '      proto->set_%s(dfhack->%s.%s);\n' % (iname[0], name[1], iname[1])
             out += '      break;\n'
@@ -313,22 +217,7 @@ class CppRenderer:
     
     # bitfields
 
-    def render_bitfield_masks(self, xml):
-        out = self.ident(xml) + 'enum mask {\n'
-        value = 0
-        for item in xml.findall(f'{self.ns}field'):
-            out += self.ident(xml) + '  %s = 0x%x;' % (
-                self.get_name(item,value)[0], value
-            )
-            comment = item.get('comment')
-            if comment:
-                out += ' /* ' + comment + '*/'
-            out += '\n'
-            value += 1
-        out += self.ident(xml) + '}\n'
-        return out
-    
-    def render_bitfield_type(self, xml, tname=None):
+    def render_type_bitfield(self, xml, tname=None):
         if not tname:
             tname = xml.get('type-name')
         return """
@@ -337,8 +226,8 @@ class CppRenderer:
         }
         """ % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
     
-    def render_bitfield(self, xml, value):
-        name = self.get_name(xml, value)[0]
+    def render_bitfield(self, xml):
+        name = self.get_name(xml)[0]
         tname = self.get_typedef_name(xml, name)
         out = '  proto->mutable_%s()->set_flags(dfhack->%s.whole);\n' % (
             name, name
@@ -348,29 +237,29 @@ class CppRenderer:
 
     # main renderer
 
-    def render_field(self, xml, value=1, name=None):
+    def render_field(self, xml, name=None):
         # TODO: handle comments for all types
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
-            return self.render_compound(xml, value, name)
+            return self.render_compound(xml, name)
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':
-            return self.render_simple_field(xml, value)
+            return self.render_simple_field(xml)
         elif meta == 'container' or meta == 'static-array':
-            return self.render_container(xml, value)
+            return self.render_container(xml)
         elif meta == 'global':
-            return self.render_global(xml, value)
+            return self.render_global(xml)
         elif meta == 'pointer':
-            return self.render_pointer(xml, value, name)
+            return self.render_pointer(xml, name)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_type(self, xml):
         # high-order type name
         self.global_type_name = xml.get('type-name')
-        meta = xml.get(f'{self.ns}meta')
         out = ''
         out = self.append_comment(xml, out) + '\n'
+        meta = xml.get(f'{self.ns}meta')
         if meta == 'bitfield-type':
-            return out + self.render_bitfield_type(xml)
+            return out + self.render_type_bitfield(xml)
         elif meta == 'enum-type':
             return out + self.render_type_enum(xml)
         elif meta == 'class-type':
