@@ -1,7 +1,6 @@
 #!/bin/python3
 
 import unittest
-import subprocess
 import os
 from lxml import etree
 
@@ -111,11 +110,9 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         # check and compile proto
         with open(fnames[0], 'r') as fil:
             self.assertStructEqual(fil.read(), self.PROTO)
-#        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (fnames[0], fnames[0])], shell=True)
         # check .h
         with open(fnames[2], 'r') as fil:
             self.assertStructEqual(fil.read(), self.H)
         # check and compile cpp
         with open(fnames[1], 'r') as fil:
             self.assertStructEqual(fil.read(), self.CPP)
-#        subprocess.check_call(['g++ -c -Wall -DLINUX_BUILD -lprotobuf -Iprotogen/ -I../dfhack/library/include %s' % (fnames[1])], shell=True)

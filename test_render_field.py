@@ -270,8 +270,7 @@ class TestRenderField(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
-    @unittest.skip('FIXME')
-    def test_render_field_static_array_of_anon_compounds(self):
+    def test_render_field_container_of_anon_compounds(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:level="2" ld:meta="static-array" name="approx" count="40" since="v0.40.01" comment="10 * cosine/sine of the index in units of 1/40 of a circle" ld:is-container="true">
@@ -295,9 +294,8 @@ class TestRenderField(unittest.TestCase):
           proto->set_cos(dfhack->cos);
           proto->set_sin(dfhack->sin);
         };
-        for (size_t i=0; i<dfhack->approx.size(); i++) {
-          proto->add_approx();
-          describe_T_approx(&proto->approx[i], &dfhack->aprox[i]);
+        for (size_t i=0; i<40; i++) {
+          describe_T_approx(proto->add_approx(), &dfhack->approx[i]);
         }
         """
         IMPORTS = []
@@ -328,6 +326,46 @@ class TestRenderField(unittest.TestCase):
         CPP = """
         for (size_t i=0; i<dfhack->killed_undead.size(); i++) {
           proto->add_killed_undead()->set_flags(dfhack->killed_undead[i].whole);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+    def test_render_field_container_of_enum(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="static-array" name="parts_of_speech" count="7" ld:is-container="true">
+          <ld:item ld:subtype="enum" base-type="int16_t" type-name="part_of_speech" ld:level="2" ld:meta="global"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        repeated part_of_speech parts_of_speech = 1;
+        """
+        CPP = """
+        for (size_t i=0; i<7; i++) {
+          proto->add_parts_of_speech(static_cast<dfproto::part_of_speech>(dfhack->parts_of_speech[i]));
+        }
+        """
+        IMPORTS = ['part_of_speech']
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+    def test_render_field_container_of_primitive(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="static-array" name="words" count="7" ld:is-container="true">
+          <ld:item ref-target="language_word" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        repeated int32 words = 1;
+        """
+        CPP = """
+        for (size_t i=0; i<7; i++) {
+          proto->add_words(dfhack->words[i]);
         }
         """
         IMPORTS = []

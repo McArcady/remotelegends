@@ -14,6 +14,7 @@ class AbstractRenderer:
         self.anon_id = 0
         # rules for special elements
         self.exceptions = []
+        self.exceptions_index = []
 
     TYPES = defaultdict(lambda: None, {
         k:v for k,v in {
@@ -46,6 +47,10 @@ class AbstractRenderer:
 
     def add_exception_rename(self, path, new_name):
         self.exceptions.append((path, new_name))
+        return self
+
+    def add_exception_index(self, path, new_name):
+        self.exceptions_index.append((path, new_name))
         return self
 
     def ident(self, xml):

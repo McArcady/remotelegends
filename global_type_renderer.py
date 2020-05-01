@@ -8,7 +8,8 @@ class GlobalTypeRenderer:
         self.ns = ns
         self.proto_ns = proto_ns
         self.version = 2
-        self.exceptions = []
+        self.exceptions_rename = []
+        self.exceptions_index = []
         self.xml = xml
         assert self.xml.tag == '{%s}global-type' % (self.ns)
 
@@ -23,7 +24,9 @@ class GlobalTypeRenderer:
                 if not tokens:
                     continue
                 if tokens[0] == 'rename':
-                    self.exceptions.append(tokens)
+                    self.exceptions_rename.append(tokens)
+                elif tokens[0] == 'index':
+                    self.exceptions_index.append(tokens)
         
     
     def get_type_name(self):
@@ -41,7 +44,7 @@ class GlobalTypeRenderer:
 
     def render_proto(self):
         rdr = ProtoRenderer(self.ns, self.proto_ns).set_version(self.version)
-        for tokens in self.exceptions:
+        for tokens in self.exceptions_rename:
             rdr.add_exception_rename(tokens[1], tokens[2])
         typout = rdr.render_type(self.xml)
         out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
@@ -54,8 +57,10 @@ class GlobalTypeRenderer:
 
     def render_cpp(self):
         rdr = CppRenderer(self.ns, self.proto_ns, 'DFProto')
-        for tokens in self.exceptions:
+        for tokens in self.exceptions_rename:
             rdr.add_exception_rename(tokens[1], tokens[2])
+        for tokens in self.exceptions_index:
+            rdr.add_exception_index(tokens[1], tokens[2])
         typout = rdr.render_type(self.xml)
         out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += '#include \"%s.h\"\n' % (self.get_type_name())

@@ -57,6 +57,29 @@ class TestCppRenderer(unittest.TestCase):
         }
         """)
 
+    def test_struct_index_field(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="interaction">
+          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="targets" pointer-type="interaction_target" ld:is-container="true">
+            <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="interaction_target">
+              <ld:item ld:level="3" ld:meta="global" type-name="interaction_target"/>
+            </ld:item>
+          </ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(XML)
+        self.sut.add_exception_index('interaction_target', 'index')
+        out = self.sut.render_type(root[0])
+        self.assertStructEqual(out, """
+        void DFProto::describe_interaction(dfproto::interaction* proto, df::interaction* dfhack) {
+          for (size_t i=0; i<dfhack->targets.size(); i++) {
+            proto->add_targets_ref(dfhack->targets[i]->index);
+          }
+        }
+        """)
+
 
     #
     # prototype

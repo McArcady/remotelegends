@@ -190,14 +190,23 @@ class ProtoRenderer(AbstractRenderer):
             # convert to list of refs to avoid circular dependencies
             tname = 'int32'
         if not tname and len(xml) > 0:
-            # local anon compound
             tname = 'T_'+ctx.name
+            subtype = xml[0].get(f'{self.ns}subtype')
             if xml[0].get(f'{self.ns}meta') == 'pointer':
                 out = self.render_pointer(xml[0], ctx.set_keyword('repeated'))
-            elif xml[0].get(f'{self.ns}subtype') == 'bitfield':
+            elif subtype == 'bitfield':
+                # local anon bitfield
                 tname = 'T_'+ctx.name
                 out = self.render_bitfield(xml[0], ctx.set_keyword('repeated'), tname)
+            elif subtype == 'enum':
+                tname = xml[0].get('type-name')
+                self.imports.add(tname)
+                out = self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
+            elif self.is_primitive_type(subtype):
+                tname = self.convert_type(subtype)
+                out = self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
             else:
+                # local anon compound
                 tname = 'T_'+ctx.name
                 out  = self.render_anon_compound(xml[0], tname)
                 out += self.ident(xml[0]) + self._render_line(xml[0], tname, ctx.set_keyword('repeated'))

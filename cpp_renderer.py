@@ -128,6 +128,8 @@ class CppRenderer(AbstractRenderer):
         dfhack_name = self.get_name(xml)[1]
         key = ''
         deref = False
+        out = ''
+        item_str = None
         tname = xml.get('pointer-type')
         if tname:
             if CppRenderer.is_primitive_type(tname):
@@ -136,23 +138,49 @@ class CppRenderer(AbstractRenderer):
                 self.dfproto_imports.add(tname)
                 proto_name = name + '_ref'
                 key = '->id'
+                for k,v in iter(self.exceptions_index):
+                    if k == tname:
+                        key = '->'+v
         if not tname:
             tname = xml.get('type-name')
         if tname == 'pointer':
             tname = 'int32'
             name += '_ref'
         elif tname == None and len(xml):
-            if xml[0].get(f'{self.ns}subtype') == 'bitfield':
+            subtype = xml[0].get(f'{self.ns}subtype')
+            if subtype == 'bitfield':
                 key = '.whole'
                 proto_name = name + '()->set_flags'
+            elif subtype == 'enum':
+                tname = xml[0].get('type-name')
+                self.imports.add(tname)
+                item_str = 'proto->add_%s(static_cast<dfproto::%s>(dfhack->%s[i]));' % (
+                    name, tname, name
+                )
+            elif self.is_primitive_type(subtype):
+                item_str = 'proto->add_%s(dfhack->%s[i]);' % (
+                    name, name
+                )
+            elif xml[0].get(f'{self.ns}meta') == 'compound':
+                out += self.render_anon_compound(xml[0], name)
+                item_str = 'describe_%s(proto->add_%s(), &dfhack->%s[i]);' % (
+                    'T_'+name, name, name
+                )
             else:
                 return self.render_field(xml[0], Context(name))
         if tname == 'bytes':
             return '  // type of %s not supported\n' % (name)
-        out = """
-        for (size_t i=0; i<dfhack->%s.size(); i++) {
-          proto->add_%s(%sdfhack->%s[i]%s);
-        }""" % ( dfhack_name, proto_name, '*' if deref else '', dfhack_name, key )
+        if not item_str:
+            item_str = 'proto->add_%s(%sdfhack->%s[i]%s);' % (
+                proto_name, '*' if deref else '', dfhack_name, key
+            )
+        count = xml.get('count')
+        if not count:
+            count = 'dfhack->%s.size()' % (dfhack_name)
+        out += """
+        for (size_t i=0; i<%s; i++) {
+          %s\n
+        }""" % ( count, item_str )
         return out
     
     def render_global(self, xml, ctx=None):
