@@ -212,7 +212,7 @@ class TestRenderField(unittest.TestCase):
         """
         CPP = """
 	for (size_t i=0; i<dfhack->name_singular.size(); i++) {
-	  proto->add_name_singular(dfhack->name_singular[i]);
+	  proto->add_name_singular(*dfhack->name_singular[i]);
 	}
         """
         IMPORTS = []
@@ -238,7 +238,7 @@ class TestRenderField(unittest.TestCase):
 	}
         """
         IMPORTS = []
-        DFPROTO_IMPORTS = []
+        DFPROTO_IMPORTS = ['building']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_render_field_container_of_pointers_to_anon_compound(self):
@@ -303,6 +303,36 @@ class TestRenderField(unittest.TestCase):
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
+
+    def test_render_field_container_of_bitfields(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="killed_undead" ld:is-container="true">
+            <ld:item ld:subtype="bitfield" base-type="uint16_t" ld:level="2" ld:meta="compound">
+                <ld:field name="zombie" ld:level="3" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+                <ld:field name="ghostly" ld:level="3" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+            </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message T_killed_undead {
+          enum mask {
+            zombie = 0x0;
+            ghostly = 0x1;
+          }
+          required fixed32 flags = 1;
+        }
+        repeated T_killed_undead killed_undead = 1;
+        """
+        CPP = """
+        for (size_t i=0; i<dfhack->killed_undead.size(); i++) {
+          proto->add_killed_undead()->set_flags(dfhack->killed_undead[i].whole);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
     @unittest.skip('FIXME')
     def test_render_field_container_of_container(self):

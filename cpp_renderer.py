@@ -74,13 +74,12 @@ class CppRenderer(AbstractRenderer):
           proto->set_flags(dfhack->whole);
         }
         """ % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
-    
+        
     def render_bitfield(self, xml):
         name = self.get_name(xml)[0]
         tname = self.get_typedef_name(xml, name)
         out = '  proto->mutable_%s()->set_flags(dfhack->%s.whole);\n' % (
-            name, name
-        )
+            name, name)
         return out
 
     
@@ -118,31 +117,42 @@ class CppRenderer(AbstractRenderer):
         self.dfproto_imports.add(tname)
         return '  ' + 'proto->set_%s_ref(dfhack->%s->id);\n' % (
             ctx.name, ctx.name
-        )        
+        )
 
     def render_container(self, xml, ctx):
         if xml.get(f'{self.ns}subtype') == 'df-linked-list':
             return self.render_global(xml)
-        name = self.get_name(xml)[0]
+        if xml.get(f'{self.ns}subtype') == 'df-flagarray':
+            return '// flagarrays not converted yet\n'
+        proto_name = name = self.get_name(xml)[0]
+        dfhack_name = self.get_name(xml)[1]
+        key = ''
+        deref = False
         tname = xml.get('pointer-type')
-        if tname and not CppRenderer.is_primitive_type(tname):
-#            self.imports.add(tname)
-            return """
-            for (size_t i=0; i<dfhack->%s.size(); i++) {
-	      proto->add_%s_ref(dfhack->%s[i]->id);
-	    }\n""" % ( name, name, name )
+        if tname:
+            if CppRenderer.is_primitive_type(tname):
+                deref = True
+            else:
+                self.dfproto_imports.add(tname)
+                proto_name = name + '_ref'
+                key = '->id'
         if not tname:
             tname = xml.get('type-name')
         if tname == 'pointer':
             tname = 'int32'
             name += '_ref'
         elif tname == None and len(xml):
-            return self.render_field(xml[0], Context(name))
-        else:
-            tname = self._convert_tname(tname)
+            if xml[0].get(f'{self.ns}subtype') == 'bitfield':
+                key = '.whole'
+                proto_name = name + '()->set_flags'
+            else:
+                return self.render_field(xml[0], Context(name))
         if tname == 'bytes':
             return '  // type of %s not supported\n' % (name)
-        out = '  for (size_t i=0; i<dfhack->%s.size(); i++) {\n    proto->add_%s(dfhack->%s[i]);\n  }\n' % ( name, name, name )
+        out = """
+        for (size_t i=0; i<dfhack->%s.size(); i++) {
+          proto->add_%s(%sdfhack->%s[i]%s);
+        }""" % ( dfhack_name, proto_name, '*' if deref else '', dfhack_name, key )
         return out
     
     def render_global(self, xml, ctx=None):

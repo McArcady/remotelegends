@@ -418,7 +418,7 @@ class TestRenderType(unittest.TestCase):
         }
         """
         IMPORTS = []
-        DFPROTO_IMPORTS = []
+        DFPROTO_IMPORTS = ['nemesis_record']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_render_global_type_struct_with_inheritance(self):
