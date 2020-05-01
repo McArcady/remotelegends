@@ -3,36 +3,6 @@ import sys
 import traceback
 
 from abstract_renderer import AbstractRenderer
-
-
-class BitfieldTypeRenderer(AbstractRenderer):
-
-    def __init__(self, ns):
-        AbstractRenderer.__init__(self, ns)
-
-    def render_masks(self, xml):
-        out = self.ident(xml) + 'enum mask {\n'
-        value = 0
-        for item in xml.findall(f'{self.ns}field'):
-            out += self.ident(xml) + '  %s = 0x%x;' % (
-                self.get_name(item)[0], value
-            )
-            out = self.append_comment(item, out) + '\n'
-            value += 1
-        out += self.ident(xml) + '}\n'
-        return out
-    
-    def render(self, xml, tname=None):
-        if not tname:
-            tname = xml.get('type-name')
-        assert tname
-        ident = self.ident(xml)
-        out  = ident + 'message ' + tname + ' {\n'
-        out += self.render_masks(xml)
-        out += ident + '  required fixed32 flags = 1;'
-        out  = self.append_comment(xml, out) + '\n'
-        out += ident + '}\n'
-        return out
     
 
 class ProtoRenderer(AbstractRenderer):
@@ -170,7 +140,12 @@ class ProtoRenderer(AbstractRenderer):
         if not tname and len(xml) > 0:
             # local anon compound
             tname = 'T_'+name
-            out = self.render_pointer(xml[0], value, name, keyword='repeated')
+            if xml[0].get(f'{self.ns}meta') == 'pointer':
+                out = self.render_pointer(xml[0], value, name, keyword='repeated')
+            else:
+                tname = 'T_'+name
+                out  = self.render_anon_compound(xml[0], tname)
+                out += self.ident(xml[0]) + self._render_line(xml[0], tname, value, name, keyword='repeated')
             return out
         elif ProtoRenderer.is_primitive_type(tname):
             tname = self._convert_tname(tname)
@@ -190,14 +165,14 @@ class ProtoRenderer(AbstractRenderer):
     
     # structs
 
-    def render_struct_type(self, xml, tname=None):
+    def render_struct_type(self, xml, tname=None, keyword='required'):
         if not tname:
             tname = xml.get('type-name')
         out  = self.ident(xml) + 'message ' + tname + ' {\n'
         parent = xml.get('inherits-from')
         value = 1
         if parent:
-            out += self.ident(xml) + '  ' + self._render_line(xml, parent, 1, name='parent') + ' /* parent type */\n'
+            out += self.ident(xml) + '  ' + self._render_line(xml, parent, 1, name='parent', keyword=keyword) + ' /* parent type */\n'
             self.imports.add(parent)
             value += 1        
         for item in xml.findall(f'{self.ns}field'):
@@ -262,11 +237,35 @@ class ProtoRenderer(AbstractRenderer):
 
     
     # bitfields
+
+    def render_masks(self, xml):
+        out = self.ident(xml) + 'enum mask {\n'
+        value = 0
+        for item in xml.findall(f'{self.ns}field'):
+            out += self.ident(xml) + '  %s = 0x%x;' % (
+                self.get_name(item), value
+            )
+            out = self.append_comment(item, out) + '\n'
+            value += 1
+        out += self.ident(xml) + '}\n'
+        return out
+    
+    def render_type_bitfield(self, xml, tname=None):
+        if not tname:
+            tname = xml.get('type-name')
+        assert tname
+        ident = self.ident(xml)
+        out  = ident + 'message ' + tname + ' {\n'
+        out += self.render_masks(xml)
+        out += ident + '  required fixed32 flags = 1;'
+        out  = self.append_comment(xml, out) + '\n'
+        out += ident + '}\n'
+        return out
     
     def render_bitfield(self, xml, value):
         name = self.get_name(xml)
         tname = self.get_typedef_name(xml, name)
-        out  = BitfieldTypeRenderer(self.ns).render(xml, tname)
+        out  = self.copy().render_type_bitfield(xml, tname)
         out += self.ident(xml) + self._render_line(xml, tname, value, name) + '\n'
         return out
     
@@ -275,17 +274,18 @@ class ProtoRenderer(AbstractRenderer):
 
     def render_field(self, xml, value=1, name=None, keyword='required'):
         # TODO: handle comments for all types
+        out = self.append_comment(xml, '') + '\n'
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
-            return self.render_compound(xml, value, name, keyword)
+            return out + self.render_compound(xml, value, name, keyword)
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':
             return self.render_simple_field(xml, value)
         elif meta == 'container' or meta == 'static-array':
-            return self.render_container(xml, value, name)
+            return out + self.render_container(xml, value, name)
         elif meta == 'global':
-            return self.render_global(xml, value)
+            return out + self.render_global(xml, value)
         elif meta == 'pointer':
-            return self.render_pointer(xml, value, name)
+            return out + self.render_pointer(xml, value, name)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_type(self, xml):
@@ -296,7 +296,7 @@ class ProtoRenderer(AbstractRenderer):
         out = self.append_comment(xml, out) + '\n'
         meta = xml.get(f'{self.ns}meta')
         if meta == 'bitfield-type':
-            return out + BitfieldTypeRenderer(self.ns).render(xml)
+            return out + self.render_type_bitfield(xml)
         elif meta == 'enum-type':
             return out + self.render_type_enum(xml)
         elif meta == 'class-type':
