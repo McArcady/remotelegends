@@ -254,6 +254,7 @@ class TestRenderField(unittest.TestCase):
         </ld:data-definition>
         """
         PROTO = """
+        /* entries never removed */
         message T_postings {
           required int32 idx = 1; /* equal to position in vector */
         }
@@ -263,8 +264,41 @@ class TestRenderField(unittest.TestCase):
         auto describe_T_postings = [](dfproto::mytype_T_postings* proto, df::mytype::T_postings* dfhack) {
           proto->set_idx(dfhack->idx);
         };
-        describe_T_postings(proto->mutable_postings(), &dfhack->postings);
-        
+        describe_T_postings(proto->mutable_postings(), &dfhack->postings);        
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
+
+    @unittest.skip('FIXME')
+    def test_render_field_static_array_of_anon_compounds(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="2" ld:meta="static-array" name="approx" count="40" since="v0.40.01" comment="10 * cosine/sine of the index in units of 1/40 of a circle" ld:is-container="true">
+          <ld:item ld:meta="compound" ld:level="2">
+            <ld:field name="cos" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+            <ld:field name="sin" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          </ld:item>                
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        /* 10 * cosine/sine of the index in units of 1/40 of a circle */
+        message T_approx {
+          required int32 cos = 1;
+          required int32 sin = 2;
+        }
+        repeated T_approx approx = 1;
+        """
+        CPP = """
+        auto describe_T_approx = [](dfproto::mytype_T_approx* proto, df::mytype::T_approx* dfhack) {
+          proto->set_cos(dfhack->cos);
+          proto->set_sin(dfhack->sin);
+        };
+        for (size_t i=0; i<dfhack->approx.size(); i++) {
+          proto->add_approx();
+          describe_T_approx(&proto->approx[i], &dfhack->aprox[i]);
+        }
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []

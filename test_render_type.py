@@ -506,7 +506,6 @@ class TestRenderType(unittest.TestCase):
         }
         """
         CPP = """
-        /* comment */
         void DFProto::describe_adventure_movement_optionst(dfproto::adventure_movement_optionst* proto, df::adventure_movement_optionst* dfhack) {
           describe_coord(proto->mutable_dest(), &dfhack->dest);
           describe_coord(proto->mutable_source(), &dfhack->source);

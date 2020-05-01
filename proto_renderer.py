@@ -3,7 +3,20 @@ import sys
 import traceback
 
 from abstract_renderer import AbstractRenderer
+
+
+class Context:
     
+    def __init__(self, value=None, name=None, keyword=None, ident=None):
+        self.value = value or 1
+        self.name = name
+        self.keyword = 'required' if keyword==None else keyword
+        self.ident = ident or ''
+
+    def set_keyword(self, kw):
+        self.keyword = kw
+        return self
+        
 
 class ProtoRenderer(AbstractRenderer):
 
@@ -47,7 +60,7 @@ class ProtoRenderer(AbstractRenderer):
     
     # enumerations
 
-    def _render_enum_item(self, xml, tname, value, prefix=''):
+    def _render_enum_item(self, xml, value, prefix=''):
         name = self.get_name(xml)
         out = prefix + name + ' = ' + str(value) + ';'
         return self.append_comment(xml, out) + '\n'
@@ -64,13 +77,13 @@ class ProtoRenderer(AbstractRenderer):
         for item in xml.findall('enum-item'):
             itemv = item.get('value')
             if itemv and int(itemv) < 0:
-                postdecl.append(self._render_enum_item(item, tname, int(itemv), prefix))
+                postdecl.append(self._render_enum_item(item, int(itemv), prefix))
             else:
                 if itemv and int(itemv) > value:
                     if value == 0:
                         out += self.ident(xml) + extra_ident + '  ' + prefix + 'ZERO = 0;\n'
                     value = int(itemv)
-                out += self.ident(xml) + extra_ident + '  ' + self._render_enum_item(item, tname, value, prefix)
+                out += self.ident(xml) + extra_ident + '  ' + self._render_enum_item(item, value, prefix)
                 value += 1
         for line in postdecl:
             out += self.ident(xml) + extra_ident + '  ' + line
@@ -82,157 +95,6 @@ class ProtoRenderer(AbstractRenderer):
         tname = self.get_typedef_name(xml, name)
         out = self.render_type_enum(xml, tname, prefix=name+'_', extra_ident='  ')
         out += self.ident(xml) + self._render_line(xml, tname, value, name) + '\n'
-        return out
-
-    
-    # fields & containers
-
-    def _convert_tname(self, tname):
-        if ProtoRenderer.is_primitive_type(tname):
-            tname = ProtoRenderer.convert_type(tname)
-        elif tname:
-            self.imports.add(tname)
-        else:
-            tname = 'bytes'
-        return tname
-
-    def render_simple_field(self, xml, value=1, keyword='required'):
-        tname = xml.get(f'{self.ns}subtype')
-        if tname == 'enum' or tname == 'bitfield':
-            tname = xml.get('type-name')
-            self.imports.add(tname)
-        else:
-            tname = self._convert_tname(tname)
-        name = self.get_name(xml)
-        return self._render_line(xml, tname, value, keyword=keyword)
-
-    def render_pointer(self, xml, value=1, name=None, keyword=None):
-        if not keyword:
-            keyword = 'optional'
-        if not name:
-            name = self.get_name(xml)
-        tname = xml.get('type-name')
-        if tname == None:
-            if len(xml):
-                return self.render_field(xml[0], value, name, keyword)
-            else:
-                return '// ignored pointer to unknown type\n'
-        if ProtoRenderer.is_primitive_type(tname):
-            tname = self.convert_type(tname)
-            return self._render_line(xml, tname, value, name, keyword)
-        # ref to complex type
-        return self._render_line(xml, 'int32', value, name=name+'_ref', keyword=keyword)
-
-    def render_container(self, xml, value=1, name=None):
-        if not name:
-            name = self.get_name(xml)
-        if xml.get(f'{self.ns}subtype') == 'df-linked-list':
-            return self.render_global(xml, value)
-        tname = xml.get('pointer-type')
-        if tname and not ProtoRenderer.is_primitive_type(tname):
-            # convert to list of refs to avoid circular dependencies
-            return self._render_line(xml, 'int32', value, name+'_ref', keyword='repeated')
-        if not tname:
-            tname = xml.get('type-name')
-        if tname == 'pointer':
-            # convert to list of refs to avoid circular dependencies
-            tname = 'int32'
-        if not tname and len(xml) > 0:
-            # local anon compound
-            tname = 'T_'+name
-            if xml[0].get(f'{self.ns}meta') == 'pointer':
-                out = self.render_pointer(xml[0], value, name, keyword='repeated')
-            else:
-                tname = 'T_'+name
-                out  = self.render_anon_compound(xml[0], tname)
-                out += self.ident(xml[0]) + self._render_line(xml[0], tname, value, name, keyword='repeated')
-            return out
-        elif ProtoRenderer.is_primitive_type(tname):
-            tname = self._convert_tname(tname)
-            return self._render_line(xml, tname, value, name, keyword='repeated')
-        elif len(xml):
-            return self.render_field(xml[0], value, name)
-        # container of unknown type
-        return '  // ignored container %s\n' % (name)
-            
-    
-    def render_global(self, xml, value=1):
-        tname = xml.get('type-name')
-        assert tname
-        self.imports.add(tname)
-        return self._render_line(xml, tname, value)
-        
-    
-    # structs
-
-    def render_struct_type(self, xml, tname=None, keyword='required'):
-        if not tname:
-            tname = xml.get('type-name')
-        out  = self.ident(xml) + 'message ' + tname + ' {\n'
-        parent = xml.get('inherits-from')
-        value = 1
-        if parent:
-            out += self.ident(xml) + '  ' + self._render_line(xml, parent, 1, name='parent', keyword=keyword) + ' /* parent type */\n'
-            self.imports.add(parent)
-            value += 1        
-        for item in xml.findall(f'{self.ns}field'):
-            out += self.ident(item) + self.render_field(item, value)
-            if item.get('is-union'):
-                value += len(item)
-            else:
-                value += 1
-        out += self.ident(xml) + '}\n'
-        return out
-
-    def render_anon_compound(self, xml, tname=None):
-        if not tname:
-            tname = 'T_anon'
-        return self.render_struct_type(xml, tname)
-
-    def render_compound(self, xml, value=1, name=None, keyword='required'):
-        subtype = xml.get(f'{self.ns}subtype')
-        if subtype == 'enum':
-            return self.render_enum(xml, value)
-        if subtype == 'bitfield':
-            return self.render_bitfield(xml, value)
-        
-        anon = xml.get(f'{self.ns}anon-compound')
-        union = xml.get('is-union')
-        if union == 'true':
-            if anon == 'true':
-                return self.render_union(xml, 'anon', value)
-            return self.render_union(xml, self.get_name(xml), value)
-        if anon == 'true':
-            return self.render_anon_compound(xml)
-
-        if not name:
-            name = self.get_name(xml)
-        tname = self.get_typedef_name(xml, name)
-        out  = self.copy().render_struct_type(xml, tname)
-        out += self.ident(xml) + self._render_line(xml, tname, value, name, keyword) + '\n'
-        return out
-    
-
-    # unions
-
-    def render_union(self, xml, tname, value=1):
-        fields = ''
-        predecl = []
-        for item in xml.findall(f'{self.ns}field'):
-            meta = item.get(f'{self.ns}meta')
-            if meta == 'compound':
-                itname = 'T_anon_' + str(self.anon_id)
-                self.anon_id += 1
-                predecl += self.render_anon_compound(item, tname=itname)
-                fields += self.ident(item) + '  ' + self._render_line(item, itname, value, keyword='')
-            else:
-                fields += self.ident(item) + self.render_simple_field(item, value, keyword='')
-            value += 1
-        out = ''
-        for decl in predecl:
-            out += decl
-        out += 'oneof ' + tname + ' {\n'
-        out += fields + self.ident(xml) + '}\n'
         return out
 
     
@@ -268,25 +130,165 @@ class ProtoRenderer(AbstractRenderer):
         out  = self.copy().render_type_bitfield(xml, tname)
         out += self.ident(xml) + self._render_line(xml, tname, value, name) + '\n'
         return out
+
+    
+    # fields & containers
+
+    def _convert_tname(self, tname):
+        if ProtoRenderer.is_primitive_type(tname):
+            tname = ProtoRenderer.convert_type(tname)
+        elif tname:
+            self.imports.add(tname)
+        else:
+            tname = 'bytes'
+        return tname
+
+    def render_simple_field(self, xml, ctx):
+        tname = xml.get(f'{self.ns}subtype')
+        if tname == 'enum' or tname == 'bitfield':
+            tname = xml.get('type-name')
+            self.imports.add(tname)
+        else:
+            tname = self._convert_tname(tname)
+        return self._render_line(xml, tname, ctx.value, keyword=ctx.keyword)
+
+    def render_pointer(self, xml, ctx):
+        if ctx.keyword == 'required':
+            ctx.keyword = 'optional'
+        if not ctx.name:
+            ctx.name = self.get_name(xml)
+        tname = xml.get('type-name')
+        if tname == None:
+            if len(xml):
+                return self.render_field(xml[0], ctx)
+            else:
+                return '// ignored pointer to unknown type\n'
+        if ProtoRenderer.is_primitive_type(tname):
+            tname = self.convert_type(tname)
+            return self._render_line(xml, tname, ctx.value, ctx.name, ctx.keyword)
+        # ref to complex type
+        return self._render_line(xml, 'int32', ctx.value, name=ctx.name+'_ref', keyword=ctx.keyword)
+
+    def render_container(self, xml, ctx):
+        if not ctx.name:
+            ctx.name = self.get_name(xml)
+        if xml.get(f'{self.ns}subtype') == 'df-linked-list':
+            return self.render_global(xml, ctx)
+        tname = xml.get('pointer-type')
+        if tname and not ProtoRenderer.is_primitive_type(tname):
+            # convert to list of refs to avoid circular dependencies
+            return self._render_line(xml, 'int32', ctx.value, ctx.name+'_ref', keyword='repeated')
+        if not tname:
+            tname = xml.get('type-name')
+        if tname == 'pointer':
+            # convert to list of refs to avoid circular dependencies
+            tname = 'int32'
+        if not tname and len(xml) > 0:
+            # local anon compound
+            tname = 'T_'+ctx.name
+            if xml[0].get(f'{self.ns}meta') == 'pointer':
+                out = self.render_pointer(xml[0], ctx.set_keyword('repeated'))
+            else:
+                tname = 'T_'+ctx.name
+                out  = self.render_anon_compound(xml[0], tname)
+                out += self.ident(xml[0]) + self._render_line(xml[0], tname, ctx.value, ctx.name, keyword='repeated')
+            return out
+        elif ProtoRenderer.is_primitive_type(tname):
+            tname = self._convert_tname(tname)
+            return self._render_line(xml, tname, ctx.value, ctx.name, keyword='repeated')
+        elif len(xml):
+            return self.render_field(xml[0], ctx)
+        # container of unknown type
+        return '  // ignored container %s\n' % (ctx.name)
+            
+    
+    def render_global(self, xml, ctx):
+        tname = xml.get('type-name')
+        assert tname
+        self.imports.add(tname)
+        return self._render_line(xml, tname, ctx.value)
+        
+    
+    # structs
+
+    def render_struct_type(self, xml, tname=None, keyword='required'):
+        if not tname:
+            tname = xml.get('type-name')
+        out  = self.ident(xml) + 'message ' + tname + ' {\n'
+        parent = xml.get('inherits-from')
+        value = 1
+        if parent:
+            out += self.ident(xml) + '  ' + self._render_line(xml, parent, 1, name='parent', keyword=keyword) + ' /* parent type */\n'
+            self.imports.add(parent)
+            value += 1        
+        for item in xml.findall(f'{self.ns}field'):
+            out += self.ident(item) + self.render_field(item, Context(value))
+            if item.get('is-union'):
+                value += len(item)
+            else:
+                value += 1
+        out += self.ident(xml) + '}\n'
+        return out
+
+    def render_anon_compound(self, xml, tname=None):
+        if not tname:
+            tname = 'T_anon'
+        return self.render_struct_type(xml, tname)
+
+    def render_compound(self, xml, ctx):
+        subtype = xml.get(f'{self.ns}subtype')
+        if subtype == 'enum':
+            return self.render_enum(xml, ctx.value)
+        if subtype == 'bitfield':
+            return self.render_bitfield(xml, ctx.value)
+        
+        anon = xml.get(f'{self.ns}anon-compound')
+        union = xml.get('is-union')
+        if union == 'true':
+            if anon == 'true':
+                return self.render_union(xml, 'anon', ctx.value)
+            return self.render_union(xml, self.get_name(xml), ctx.value)
+        if anon == 'true':
+            return self.render_anon_compound(xml)
+
+        if not ctx.name:
+            ctx.name = self.get_name(xml)
+        tname = self.get_typedef_name(xml, ctx.name)
+        out  = self.copy().render_struct_type(xml, tname)
+        out += self.ident(xml) + self._render_line(xml, tname, ctx.value, ctx.name, ctx.keyword) + '\n'
+        return out
+    
+
+    # unions
+
+    def render_union(self, xml, tname, value=1):
+        fields = ''
+        predecl = []
+        for item in xml.findall(f'{self.ns}field'):
+            meta = item.get(f'{self.ns}meta')
+            if meta == 'compound':
+                itname = 'T_anon_' + str(self.anon_id)
+                self.anon_id += 1
+                predecl += self.render_anon_compound(item, tname=itname)
+                fields += self.ident(item) + '  ' + self._render_line(item, itname, value, keyword='')
+            else:
+                fields += self.ident(item) + self.render_simple_field(item, Context(value, keyword=''))
+            value += 1
+        out = ''
+        for decl in predecl:
+            out += decl
+        out += 'oneof ' + tname + ' {\n'
+        out += fields + self.ident(xml) + '}\n'
+        return out
     
 
     # main renderer
 
-    def render_field(self, xml, value=1, name=None, keyword='required'):
-        # TODO: handle comments for all types
-        out = self.append_comment(xml, '') + '\n'
-        meta = xml.get(f'{self.ns}meta')
-        if not meta or meta == 'compound':
-            return out + self.render_compound(xml, value, name, keyword)
-        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
-            return self.render_simple_field(xml, value)
-        elif meta == 'container' or meta == 'static-array':
-            return out + self.render_container(xml, value, name)
-        elif meta == 'global':
-            return out + self.render_global(xml, value)
-        elif meta == 'pointer':
-            return out + self.render_pointer(xml, value, name)
-        raise Exception('not supported: '+xml.tag+': meta='+str(meta))
+    def render_field(self, xml, ctx=None):
+        if not ctx:
+            ctx = Context()
+        comment = self.append_comment(xml, '') + '\n'
+        return self.render_field_impl(xml, ctx, comment)
 
     def render_type(self, xml):
         if self.proto_ns:
@@ -294,13 +296,4 @@ class ProtoRenderer(AbstractRenderer):
         else:
             out = ''
         out = self.append_comment(xml, out) + '\n'
-        meta = xml.get(f'{self.ns}meta')
-        if meta == 'bitfield-type':
-            return out + self.render_type_bitfield(xml)
-        elif meta == 'enum-type':
-            return out + self.render_type_enum(xml)
-        elif meta == 'class-type':
-            return out + self.render_struct_type(xml)
-        elif meta == 'struct-type':
-            return out + self.render_struct_type(xml)
-        raise Exception('not supported: '+xml.tag+': meta='+str(meta))
+        return out + self.render_type_impl(xml)

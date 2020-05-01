@@ -79,3 +79,32 @@ class AbstractRenderer:
         if comment:
             return line + ' /* ' + comment + ' */'
         return line
+
+
+    # main renderer
+
+    def render_type_impl(self, xml):
+        meta = xml.get(f'{self.ns}meta')
+        if meta == 'bitfield-type':
+            return self.render_type_bitfield(xml)
+        elif meta == 'enum-type':
+            return self.render_type_enum(xml)
+        elif meta == 'class-type':
+            return self.render_struct_type(xml)
+        elif meta == 'struct-type':
+            return self.render_struct_type(xml)
+        raise Exception('not supported: '+xml.tag+': meta='+str(meta))
+
+    def render_field_impl(self, xml, ctx, comment=''):
+        meta = xml.get(f'{self.ns}meta')
+        if not meta or meta == 'compound':
+            return comment + self.render_compound(xml, ctx)
+        if meta == 'primitive' or meta == 'number' or meta == 'bytes':
+            return self.render_simple_field(xml, ctx)
+        elif meta == 'container' or meta == 'static-array':
+            return comment + self.render_container(xml, ctx)
+        elif meta == 'global':
+            return comment + self.render_global(xml, ctx)
+        elif meta == 'pointer':
+            return comment + self.render_pointer(xml, ctx)
+        raise Exception('not supported: '+xml.tag+': meta='+str(meta))
