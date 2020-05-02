@@ -154,7 +154,10 @@ class CppRenderer(AbstractRenderer):
                 proto_name = name + '()->set_flags'
             elif subtype == 'enum':
                 tname = xml[0].get('type-name')
-                self.imports.add(tname)
+                if tname:
+                    self.imports.add(tname)
+                else:
+                    tname = self.global_type_name + '_T_' + name
                 item_str = 'proto->add_%s(static_cast<dfproto::%s>(dfhack->%s[i]));' % (
                     name, tname, name
                 )

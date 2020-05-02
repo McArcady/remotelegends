@@ -401,6 +401,33 @@ class TestRenderField(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
+    def test_render_field_container_of_local_enums(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="options" ld:is-container="true">
+            <ld:item ld:subtype="enum" base-type="int32_t" name="options" ld:level="2" ld:meta="compound">
+                <enum-item name="Return"/>
+                <enum-item name="Save"/>
+            </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        enum T_options {
+          T_options_Return = 0;
+          T_options_Save = 1;
+        }
+        repeated T_options options = 1;
+        """
+        CPP = """
+        for (size_t i=0; i<dfhack->options.size(); i++) {
+          proto->add_options(static_cast<dfproto::mytype_T_options>(dfhack->options[i]));
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
+
     def test_render_field_container_of_primitives(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">

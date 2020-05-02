@@ -203,8 +203,13 @@ class ProtoRenderer(AbstractRenderer):
                 out = self.render_bitfield(xml[0], ctx.set_keyword('repeated'), tname)
             elif subtype == 'enum':
                 tname = xml[0].get('type-name')
-                self.imports.add(tname)
-                out = self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
+                if tname:
+                    self.imports.add(tname)
+                    out = ''
+                else:
+                    tname = 'T_' + ctx.name
+                    out  = self.render_type_enum(xml[0], tname)
+                out += self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
             elif self.is_primitive_type(subtype):
                 tname = self.convert_type(subtype)
                 out = self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
