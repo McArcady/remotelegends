@@ -73,6 +73,29 @@ class TestRenderField(unittest.TestCase):
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
+    
+    def test_render_field_anon_enum(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:subtype="enum" base-type="int32_t" name="role" ld:level="1" ld:meta="compound">
+          <enum-item name="Other" comment="eat, drink, pickup equipment"/>
+          <enum-item name="Reagent"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        enum T_role {
+          role_Other = 0; /* eat, drink, pickup equipment */
+          role_Reagent = 1;
+        }
+        required T_role role = 1;
+        """
+        CPP = """
+        proto->set_role(static_cast<dfproto::mytype_T_role>(dfhack->role));
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
 
     #

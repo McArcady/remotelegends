@@ -50,16 +50,16 @@ class CppRenderer(AbstractRenderer):
         # record enum descriptor in case it is needed later as a discriminator for an union
         self.last_enum_descr = xml
         name = self.get_name(xml)
-        if xml.get(f'{self.ns}typedef-name'):
-            # local enum
-            tname = self.get_typedef_name(xml, name)
-            out = '  proto->set_%s(static_cast<dfproto::%s_%s>(dfhack->%s));\n' % (
-                name[0], self.global_type_name, tname, name[1]
-            )
-        else:
-            tname = xml.get('type-name')
+        tname = xml.get('type-name')
+        if tname:
             out = '  proto->set_%s(static_cast<dfproto::%s>(dfhack->%s));\n' % (
                 name[0], tname, name[1]
+            )
+        else:
+            # local enum
+            tname = self.get_typedef_name(xml, name[0])
+            out = '  proto->set_%s(static_cast<dfproto::%s_%s>(dfhack->%s));\n' % (
+                name[0], self.global_type_name, tname, name[1]
             )
         return out
 
