@@ -355,7 +355,7 @@ class TestRenderField(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_field_container_of_enum(self):
+    def test_render_field_container_of_enums(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:level="1" ld:meta="static-array" name="parts_of_speech" count="7" ld:is-container="true">
@@ -375,7 +375,7 @@ class TestRenderField(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_field_container_of_primitive(self):
+    def test_render_field_container_of_primitives(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:level="1" ld:meta="static-array" name="words" count="7" ld:is-container="true">
@@ -418,6 +418,23 @@ class TestRenderField(unittest.TestCase):
         repeated T_region_masks region_masks = 1;
         """
         CPP = None
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+    
+    def test_render_field_container_ignored(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" since="v0.40.01" comment="not saved" ld:is-container="true"/>
+        </ld:data-definition>
+        """
+        PROTO = """
+        /* not saved */
+        // ignored container anon_1
+        """
+        CPP = """
+        // ignored container anon_1
+        """
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)

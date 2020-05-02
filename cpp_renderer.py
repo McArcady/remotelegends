@@ -86,8 +86,8 @@ class CppRenderer(AbstractRenderer):
     # fields & containers
 
     def _convert_tname(self, tname):
-        if CppRenderer.is_primitive_type(tname):
-            tname = CppRenderer.convert_type(tname)
+        if self.is_primitive_type(tname):
+            tname = self.convert_type(tname)
         elif tname:
             self.imports.add(tname)
         else:
@@ -110,7 +110,7 @@ class CppRenderer(AbstractRenderer):
             else:
                 # pointer to anon type
                 return '  // ignored pointer to unknown type'
-        if CppRenderer.is_primitive_type(tname):
+        if self.is_primitive_type(tname):
             return '  ' + 'proto->set_%s(*dfhack->%s);\n' % (
                 ctx.name, ctx.name
             )
@@ -132,7 +132,7 @@ class CppRenderer(AbstractRenderer):
         item_str = None
         tname = xml.get('pointer-type')
         if tname:
-            if CppRenderer.is_primitive_type(tname):
+            if self.is_primitive_type(tname):
                 deref = True
             else:
                 self.dfproto_imports.add(tname)
@@ -168,6 +168,8 @@ class CppRenderer(AbstractRenderer):
                 )
             else:
                 return self.render_field(xml[0], Context(name))
+        elif tname == None:
+            return '// ignored container ' + name
         if tname == 'bytes':
             return '  // type of %s not supported\n' % (name)
         if not item_str:

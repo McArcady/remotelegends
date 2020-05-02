@@ -141,8 +141,8 @@ class ProtoRenderer(AbstractRenderer):
     # fields & containers
 
     def _convert_tname(self, tname):
-        if ProtoRenderer.is_primitive_type(tname):
-            tname = ProtoRenderer.convert_type(tname)
+        if self.is_primitive_type(tname):
+            tname = self.convert_type(tname)
         elif tname:
             self.imports.add(tname)
         else:
@@ -169,7 +169,7 @@ class ProtoRenderer(AbstractRenderer):
                 return self.render_field(xml[0], ctx)
             else:
                 return '// ignored pointer to unknown type\n'
-        if ProtoRenderer.is_primitive_type(tname):
+        if self.is_primitive_type(tname):
             tname = self.convert_type(tname)
             return self._render_line(xml, tname, ctx)
         # ref to complex type
@@ -181,7 +181,7 @@ class ProtoRenderer(AbstractRenderer):
         if xml.get(f'{self.ns}subtype') == 'df-linked-list':
             return self.render_global(xml, ctx)
         tname = xml.get('pointer-type')
-        if tname and not ProtoRenderer.is_primitive_type(tname):
+        if tname and not self.is_primitive_type(tname):
             # convert to list of refs to avoid circular dependencies
             return self._render_line(xml, 'int32', ctx.set_name(ctx.name+'_ref').set_keyword('repeated'))
         if not tname:
@@ -211,7 +211,7 @@ class ProtoRenderer(AbstractRenderer):
                 out  = self.render_anon_compound(xml[0], tname)
                 out += self.ident(xml[0]) + self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
             return out
-        elif ProtoRenderer.is_primitive_type(tname):
+        elif self.is_primitive_type(tname):
             tname = self._convert_tname(tname)
             return self._render_line(xml, tname, ctx.set_keyword('repeated'))
         elif len(xml):
