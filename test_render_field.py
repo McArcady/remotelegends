@@ -354,6 +354,29 @@ class TestRenderField(unittest.TestCase):
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+    
+    def test_render_field_container_of_empty_bitfields(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="can_connect" ld:is-container="true">
+          <ld:item ld:subtype="bitfield" type-name="machine_conn_modes" ld:level="2" ld:meta="global"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message T_can_connect {
+          required fixed32 flags = 1;
+        }
+        repeated T_can_connect can_connect = 1;
+        """
+        CPP = """
+        for (size_t i=0; i<dfhack->can_connect.size(); i++) {
+          proto->add_can_connect()->set_flags(dfhack->can_connect[i].whole);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_render_field_container_of_enums(self):
         XML = """

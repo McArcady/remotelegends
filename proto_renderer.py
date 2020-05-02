@@ -106,6 +106,8 @@ class ProtoRenderer(AbstractRenderer):
     # bitfields
 
     def render_masks(self, xml):
+        if len(xml) == 0:
+            return '\n'
         out = self.ident(xml) + 'enum mask {\n'
         value = 0
         for item in xml.findall(f'{self.ns}field'):
