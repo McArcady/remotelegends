@@ -13,8 +13,14 @@ class AbstractRenderer:
         self.anon_xml = None
         self.anon_id = 0
         # rules for special elements
-        self.exceptions = []
+        self.exceptions_rename = []
+        self.exceptions_ignore = []
         self.exceptions_index = []
+
+    def copy(self, target):
+        target.exceptions_ignore = self.exceptions_ignore
+        target.exceptions_rename = self.exceptions_rename
+        target.exceptions_index = self.exceptions_index
 
     TYPES = defaultdict(lambda: None, {
         k:v for k,v in {
@@ -45,12 +51,16 @@ class AbstractRenderer:
     def is_primitive_type(typ):
         return typ in AbstractRenderer.TYPES.keys()
 
-    def add_exception_rename(self, path, new_name):
-        self.exceptions.append((path, new_name))
+    def add_exception_rename(self, xpath, new_name):
+        self.exceptions_rename.append((xpath, new_name))
         return self
 
-    def add_exception_index(self, path, new_name):
-        self.exceptions_index.append((path, new_name))
+    def add_exception_ignore(self, xpath):
+        self.exceptions_ignore.append(xpath)
+        return self
+
+    def add_exception_index(self, tname, field):
+        self.exceptions_index.append((tname, field))
         return self
 
     def ident(self, xml):
@@ -59,7 +69,7 @@ class AbstractRenderer:
 
     def get_name(self, xml):
         name = xml.get('name')
-        for k,v in iter(self.exceptions):
+        for k,v in iter(self.exceptions_rename):
             found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
             if found and found[0] is xml:
                 # return protobuf name and dfhack name
@@ -101,6 +111,11 @@ class AbstractRenderer:
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_field_impl(self, xml, ctx, comment=''):
+        for k in self.exceptions_ignore:
+            found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
+            if found and found[0] is xml:
+                # ignore this field
+                return '// ignored field ' + AbstractRenderer.get_name(self, xml)[0]
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
             return comment + self.render_compound(xml, ctx)

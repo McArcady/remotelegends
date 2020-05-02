@@ -35,6 +35,7 @@ class ProtoRenderer(AbstractRenderer):
 
     def copy(self):
         copy = ProtoRenderer(self.ns, proto_ns=self.proto_ns)
+        AbstractRenderer.copy(self, copy)
         copy.imports = self.imports
         copy.version = self.version
         return copy

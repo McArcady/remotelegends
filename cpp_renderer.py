@@ -28,6 +28,7 @@ class CppRenderer(AbstractRenderer):
 
     def copy(self):
         copy = CppRenderer(self.ns, self.proto_ns, self.cpp_ns)
+        AbstractRenderer.copy(self, copy)
         copy.imports = self.imports
         copy.dfproto_imports = self.dfproto_imports
         copy.global_type_name = self.global_type_name

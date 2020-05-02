@@ -18,11 +18,15 @@ class TestGlobalTypeRenderer(unittest.TestCase):
             <ld:field name="glorify_hf" ref-target="historical_figure" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
             <ld:field name="artifact_is_heirloom_of_family_hfid" ref-target="historical_figure" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>"historical_entity" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
           </ld:field>
+          <ld:field name="ignore_me" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
         </ld:global-type>        
         </ld:data-definition>
         """
         self.EXCEPTIONS = """
-        rename /ld:data-definition/ld:global-type/ld:field/ld:field[@name="glorify_hf"] glorify_hfid\n
+        # rename these
+        rename /ld:data-definition/ld:global-type/ld:field/ld:field[@name="glorify_hf"] glorify_hfid
+        # ignore those
+        ignore /ld:data-definition/ld:global-type/ld:field[@name="ignore_me"]
         """
         self.PROTO = """
         /* THIS FILE WAS GENERATED. DO NOT EDIT. */
@@ -38,6 +42,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
             int32 glorify_hfid = 2;
             int32 artifact_is_heirloom_of_family_hfid = 3;
           }
+          // ignored field ignore_me
         }
         """
         self.CPP = """
@@ -58,6 +63,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
             default:
               proto->clear_data();           
           }
+          // ignored field ignore_me
 	}
         """
         self.H = """

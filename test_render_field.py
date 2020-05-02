@@ -584,4 +584,3 @@ class TestRenderField(unittest.TestCase):
         IMPORTS = ['item_type']
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
-    

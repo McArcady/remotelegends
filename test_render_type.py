@@ -2,7 +2,6 @@
 
 import os
 import unittest
-import subprocess
 from lxml import etree
 
 from cpp_renderer import CppRenderer
@@ -31,8 +30,6 @@ class TestRenderType(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-#        subprocess.check_call(['protoc -I. -o%s.pb  %s' % (OUTPUT_FNAME, OUTPUT_FNAME)], shell=True)
-#        os.remove(OUTPUT_FNAME+'.pb')
         os.remove(OUTPUT_FNAME)
 
     def assertStructEqual(self, str1, str2):
@@ -513,4 +510,61 @@ class TestRenderType(unittest.TestCase):
         """
         IMPORTS = ['coord']
         DFPROTO_IMPORTS = ['coord']
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+    
+
+    #
+    # exceptions
+    #
+    
+    def test_ignore_field(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="general_ref" original-name="general_refst">
+          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="general_refs" pointer-type="general_ref" ld:is-container="true">
+            <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="general_ref">
+              <ld:item ld:level="3" ld:meta="global" type-name="general_ref"/>
+            </ld:item>
+          </ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message general_ref {
+          // ignored field general_refs
+        }
+        """
+        CPP = """
+        void DFProto::describe_general_ref(dfproto::general_ref* proto, df::general_ref* dfhack) {
+          // ignored field general_refs
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.sut_proto.add_exception_ignore('ld:global-type[@type-name="general_ref"]/ld:field[@name="general_refs"]')
+        self.sut_cpp.add_exception_ignore('ld:global-type[@type-name="general_ref"]/ld:field[@name="general_refs"]')
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+    def test_rename_field(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_position_raw">
+          <ld:field name="squad_size" ld:level="1" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message entity_position_raw {
+          required int32 squad_sz = 1;
+        }
+        """
+        CPP = """
+        void DFProto::describe_entity_position_raw(dfproto::entity_position_raw* proto, df::entity_position_raw* dfhack) {
+          proto->set_squad_sz(dfhack->squad_size);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.sut_cpp.add_exception_rename('ld:global-type[@type-name="entity_position_raw"]/ld:field[@name="squad_size"]', 'squad_sz')
+        self.sut_proto.add_exception_rename('ld:global-type[@type-name="entity_position_raw"]/ld:field[@name="squad_size"]', 'squad_sz')
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)

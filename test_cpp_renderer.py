@@ -40,23 +40,6 @@ class TestCppRenderer(unittest.TestCase):
     # test exceptions
     #
 
-    def test_rename_field(self):
-        XML = """
-        <ld:data-definition xmlns:ld="ns">
-        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_position_raw">
-          <ld:field name="squad_size" ld:level="1" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
-        </ld:global-type>
-        </ld:data-definition>
-        """
-        root = etree.fromstring(XML)
-        self.sut.add_exception_rename('ld:global-type[@type-name="entity_position_raw"]/ld:field[@name="squad_size"]', 'squad_sz')
-        out = self.sut.render_type(root[0])
-        self.assertStructEqual(out, """
-        void DFProto::describe_entity_position_raw(dfproto::entity_position_raw* proto, df::entity_position_raw* dfhack) {
-          proto->set_squad_sz(dfhack->squad_size);
-        }
-        """)
-
     def test_struct_index_field(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">

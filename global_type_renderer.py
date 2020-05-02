@@ -9,6 +9,7 @@ class GlobalTypeRenderer:
         self.proto_ns = proto_ns
         self.version = 2
         self.exceptions_rename = []
+        self.exceptions_ignore = []
         self.exceptions_index = []
         self.xml = xml
         assert self.xml.tag == '{%s}global-type' % (self.ns)
@@ -21,12 +22,14 @@ class GlobalTypeRenderer:
         with open(fname, 'r') as fil:
             for line in fil:
                 tokens = line.strip().split(' ')
-                if not tokens:
+                if not tokens or tokens[0].startswith('#'):
                     continue
                 if tokens[0] == 'rename':
                     self.exceptions_rename.append(tokens)
                 elif tokens[0] == 'index':
                     self.exceptions_index.append(tokens)
+                elif tokens[0] == 'ignore':
+                    self.exceptions_ignore.append(tokens)
         
     
     def get_type_name(self):
@@ -46,6 +49,8 @@ class GlobalTypeRenderer:
         rdr = ProtoRenderer(self.ns, self.proto_ns).set_version(self.version)
         for tokens in self.exceptions_rename:
             rdr.add_exception_rename(tokens[1], tokens[2])
+        for tokens in self.exceptions_ignore:
+            rdr.add_exception_ignore(tokens[1])
         typout = rdr.render_type(self.xml)
         out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += 'syntax = "proto%d";\n' % (self.version)
@@ -61,6 +66,8 @@ class GlobalTypeRenderer:
             rdr.add_exception_rename(tokens[1], tokens[2])
         for tokens in self.exceptions_index:
             rdr.add_exception_index(tokens[1], tokens[2])
+        for tokens in self.exceptions_ignore:
+            rdr.add_exception_ignore(tokens[1])
         typout = rdr.render_type(self.xml)
         out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += '#include \"%s.h\"\n' % (self.get_type_name())
