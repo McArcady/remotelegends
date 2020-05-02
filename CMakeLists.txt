@@ -1,4 +1,4 @@
-project(grpc)
+project(grpc LANGUAGES CXX)
 
 cmake_minimum_required(VERSION 3.13)
 if(COMMAND cmake_policy)
@@ -77,7 +77,7 @@ foreach (xml_file ${structures})
     DEPENDS ${xml_file} ${GENERATE_INPUT_SCRIPTS} ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
   )
 
-  # define target for this xml file
+  # define target for all products of this xml file
   string(REGEX REPLACE "/" "_" struct_target ${filter})
   string(REGEX REPLACE "\\." "_" struct_target ${struct_target})
   add_custom_target(${struct_target} DEPENDS ${proto_files} ${header_files} ${source_files})
@@ -107,9 +107,9 @@ foreach (xml_file ${structures})
 	  DEPENDS ${cpp_file} proto_${struct_target}
 	)
 
-    add_library(lib_${my_target} ${cpp_file})
-	add_dependencies(lib_${my_target} convert_${my_target})
-	target_link_libraries(lib_${my_target} ${Protobuf_LIBRARIES})	
+    add_library(${my_target} ${cpp_file})
+	add_dependencies(${my_target} convert_${my_target})
+	target_link_libraries(${my_target} ${Protobuf_LIBRARIES})
   endforeach()
   
 endforeach()
