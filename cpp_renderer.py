@@ -171,7 +171,14 @@ class CppRenderer(AbstractRenderer):
                     'T_'+name, name, name
                 )
             else:
-                return self.render_field(xml[0], Context(name))
+                tname = xml[0].get('type-name')
+                if self.is_primitive_type(tname):
+                    return self.render_field(xml[0], Context(name))
+                self.imports.add(tname)
+                self.dfproto_imports.add(tname)
+                item_str = 'describe_%s(proto->add_%s(), &dfhack->%s[i]);' % (
+                    tname, name, name
+                )
         elif tname == None:
             return '// ignored container ' + name
         if tname == 'bytes':

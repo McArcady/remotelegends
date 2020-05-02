@@ -220,81 +220,45 @@ class TestRenderField(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_field_container_of_pointers_to_primitive(self):
+    def test_render_field_container_array_of_primitives(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
-        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="name_singular" pointer-type="stl-string" ld:is-container="true">
-          <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="stl-string">
-            <ld:item ld:level="3" ld:meta="primitive" ld:subtype="stl-string"/>
-          </ld:item>
+        <ld:field ld:level="1" ld:meta="static-array" name="words" count="7" ld:is-container="true">
+          <ld:item ref-target="language_word" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
         </ld:field>
         </ld:data-definition>
         """
         PROTO = """
-        repeated string name_singular = 1;
+        repeated int32 words = 1;
         """
         CPP = """
-	for (size_t i=0; i<dfhack->name_singular.size(); i++) {
-	  proto->add_name_singular(*dfhack->name_singular[i]);
-	}
+        for (size_t i=0; i<7; i++) {
+          proto->add_words(dfhack->words[i]);
+        }
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
-    def test_render_field_container_of_pointers_to_global_type(self):
+    def test_render_field_container_array_of_global_type(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
-        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="children" pointer-type="building" ld:is-container="true">
-          <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="building">
-            <ld:item ld:level="3" ld:meta="global" type-name="building"/>
-          </ld:item>
+        <ld:field ld:level="1" ld:meta="static-array" name="armorstand_pos" count="6" ld:is-container="true">
+            <ld:item type-name="coord" ld:level="2" ld:meta="global"/>
         </ld:field>
         </ld:data-definition>
         """
         PROTO = """
-        repeated int32 children_ref = 1;
+        repeated coord armorstand_pos = 1;
         """
         CPP = """
-	for (size_t i=0; i<dfhack->children.size(); i++) {
-	  proto->add_children_ref(dfhack->children[i]->id);
+	for (size_t i=0; i<6; i++) {
+          describe_coord(proto->add_armorstand_pos(), &dfhack->armorstand_pos[i]);
 	}
         """
-        IMPORTS = []
-        DFPROTO_IMPORTS = ['building']
+        IMPORTS = ['coord']
+        DFPROTO_IMPORTS = ['coord']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
-
-    @unittest.skip('FIXME: added to ignore list')
-    def test_render_field_container_of_pointers_to_anon_compound(self):
-        XML = """
-        <ld:data-definition xmlns:ld="ns">
-        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="postings" comment="entries never removed" ld:is-container="true">
-            <ld:item ld:level="2" ld:meta="pointer" ld:is-container="true">
-              <ld:item ld:meta="compound" ld:level="2">
-                <ld:field name="idx" comment="equal to position in vector" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
-              </ld:item>
-            </ld:item>
-        </ld:field>
-        </ld:data-definition>
-        """
-        PROTO = """
-        /* entries never removed */
-        message T_postings {
-          required int32 idx = 1; /* equal to position in vector */
-        }
-        repeated T_postings postings = 1;
-        """
-        CPP = """
-        auto describe_T_postings = [](dfproto::mytype_T_postings* proto, df::mytype::T_postings* dfhack) {
-          proto->set_idx(dfhack->idx);
-        };
-        for (size_t i=0; i<dfhack->postings.size(); i++) {
-          describe_T_postings(proto->add_postings(), &dfhack->postings[i]);
-        }
-        """
-        IMPORTS = []
-        DFPROTO_IMPORTS = []
-        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
     def test_render_field_container_of_anon_compounds(self):
         XML = """
@@ -427,27 +391,105 @@ class TestRenderField(unittest.TestCase):
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
-
-    def test_render_field_container_of_primitives(self):
+    
+    def test_render_field_container_ignored(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
-        <ld:field ld:level="1" ld:meta="static-array" name="words" count="7" ld:is-container="true">
-          <ld:item ref-target="language_word" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" since="v0.40.01" comment="not saved" ld:is-container="true"/>
+        </ld:data-definition>
+        """
+        PROTO = """
+        /* not saved */
+        // ignored container anon_1
+        """
+        CPP = """
+        // ignored container anon_1
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+
+    #
+    # container of pointers
+    #
+
+    def test_render_field_container_of_pointers_to_primitive(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="name_singular" pointer-type="stl-string" ld:is-container="true">
+          <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="stl-string">
+            <ld:item ld:level="3" ld:meta="primitive" ld:subtype="stl-string"/>
+          </ld:item>
         </ld:field>
         </ld:data-definition>
         """
         PROTO = """
-        repeated int32 words = 1;
+        repeated string name_singular = 1;
         """
         CPP = """
-        for (size_t i=0; i<7; i++) {
-          proto->add_words(dfhack->words[i]);
-        }
+	for (size_t i=0; i<dfhack->name_singular.size(); i++) {
+	  proto->add_name_singular(*dfhack->name_singular[i]);
+	}
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
+    def test_render_field_container_of_pointers_to_global_type(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="children" pointer-type="building" ld:is-container="true">
+          <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="building">
+            <ld:item ld:level="3" ld:meta="global" type-name="building"/>
+          </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        repeated int32 children_ref = 1;
+        """
+        CPP = """
+	for (size_t i=0; i<dfhack->children.size(); i++) {
+	  proto->add_children_ref(dfhack->children[i]->id);
+	}
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = ['building']
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+    @unittest.skip('FIXME: added to ignore list')
+    def test_render_field_container_of_pointers_to_anon_compound(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="postings" comment="entries never removed" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="pointer" ld:is-container="true">
+              <ld:item ld:meta="compound" ld:level="2">
+                <ld:field name="idx" comment="equal to position in vector" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+              </ld:item>
+            </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        /* entries never removed */
+        message T_postings {
+          required int32 idx = 1; /* equal to position in vector */
+        }
+        repeated T_postings postings = 1;
+        """
+        CPP = """
+        auto describe_T_postings = [](dfproto::mytype_T_postings* proto, df::mytype::T_postings* dfhack) {
+          proto->set_idx(dfhack->idx);
+        };
+        for (size_t i=0; i<dfhack->postings.size(); i++) {
+          describe_T_postings(proto->add_postings(), &dfhack->postings[i]);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
+
     @unittest.skip('FIXME')
     def test_render_field_container_of_container(self):
         XML = """
@@ -471,23 +513,6 @@ class TestRenderField(unittest.TestCase):
         repeated T_region_masks region_masks = 1;
         """
         CPP = None
-        IMPORTS = []
-        DFPROTO_IMPORTS = []
-        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
-    
-    def test_render_field_container_ignored(self):
-        XML = """
-        <ld:data-definition xmlns:ld="ns">
-        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" since="v0.40.01" comment="not saved" ld:is-container="true"/>
-        </ld:data-definition>
-        """
-        PROTO = """
-        /* not saved */
-        // ignored container anon_1
-        """
-        CPP = """
-        // ignored container anon_1
-        """
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)

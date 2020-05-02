@@ -213,6 +213,10 @@ class ProtoRenderer(AbstractRenderer):
             elif self.is_primitive_type(subtype):
                 tname = self.convert_type(subtype)
                 out = self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
+            elif xml[0].get('type-name'):
+                tname = xml[0].get('type-name')
+                self.imports.add(tname)
+                out = self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
             else:
                 # local anon compound
                 tname = 'T_'+ctx.name
