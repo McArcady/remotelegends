@@ -82,7 +82,7 @@ def main():
             try:
                 if 'global-type' not in item.tag:
                     if not args.quiet:
-                        sys.stdout.write('skipped global-object '+item.get('name') + '\n')
+                        sys.stdout.write('skipped type '+item.get('type-name') + '\n')
                     continue
                 rdr = GlobalTypeRenderer(item, ns)
                 rdr.set_proto_version(args.version)
@@ -90,7 +90,10 @@ def main():
                     rdr.set_exceptions_file(args.exceptions)
                 fnames = rdr.render_to_files(args.proto_out, args.cpp_out, args.h_out)
                 if not args.quiet:
-                    sys.stdout.write('created %s\n' % (', '.join(fnames)))
+                    if fnames:
+                        sys.stdout.write('created %s\n' % (', '.join(fnames)))
+                    else:
+                        sys.stdout.write('ignored type %s\n' % (rdr.get_type_name()))
             except Exception as e:
                 _,_,tb = sys.exc_info()
                 sys.stderr.write(COLOR_FAIL + 'error rendering type %s at line %d: %s\n' % (rdr.get_type_name(), item.sourceline if item.sourceline else 0, e) + COLOR_ENDC)

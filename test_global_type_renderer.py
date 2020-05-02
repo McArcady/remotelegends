@@ -27,6 +27,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         rename /ld:data-definition/ld:global-type/ld:field/ld:field[@name="glorify_hf"] glorify_hfid
         # ignore those
         ignore /ld:data-definition/ld:global-type/ld:field[@name="ignore_me"]
+        ignore /ld:data-definition/ld:global-type[@type-name="world_unk_c0"]
         """
         self.PROTO = """
         /* THIS FILE WAS GENERATED. DO NOT EDIT. */
@@ -122,3 +123,16 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         # check and compile cpp
         with open(fnames[1], 'r') as fil:
             self.assertStructEqual(fil.read(), self.CPP)
+
+    def test_ignore_type(self):
+        self.XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="world_unk_c0">
+          <ld:field ld:subtype="enum" name="type"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        root = etree.fromstring(self.XML)
+        sut = GlobalTypeRenderer(root[0], 'ns')
+        sut.set_exceptions_file(self.delete_me[0])
+        self.assertFalse(sut.render_to_files('./', './', './'))

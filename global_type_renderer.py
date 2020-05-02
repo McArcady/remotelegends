@@ -52,7 +52,7 @@ class GlobalTypeRenderer:
         for tokens in self.exceptions_ignore:
             rdr.add_exception_ignore(tokens[1])
         typout = rdr.render_type(self.xml)
-        out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
+        out  = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += 'syntax = "proto%d";\n' % (self.version)
         out += 'option optimize_for = LITE_RUNTIME;\n'
         for imp in rdr.imports:
@@ -69,7 +69,7 @@ class GlobalTypeRenderer:
         for tokens in self.exceptions_ignore:
             rdr.add_exception_ignore(tokens[1])
         typout = rdr.render_type(self.xml)
-        out = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
+        out  = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += '#include \"%s.h\"\n' % (self.get_type_name())
         for imp in rdr.imports:
             out += '#include \"df/%s.h\"\n' % (imp)
@@ -92,6 +92,16 @@ class GlobalTypeRenderer:
         return out
 
     def render_to_files(self, proto_out, cpp_out, h_out):
+        for k in self.exceptions_ignore:
+            found = self.xml.getroottree().xpath(k[1], namespaces={
+                'ld': self.ns,
+                're': 'http://exslt.org/regular-expressions'
+            })
+            if found and found[0] is self.xml:
+                # ignore this type
+                return None
+
+        # generate code 
         proto_name = self.get_type_name() + '.proto'
         with open(proto_out + '/' + proto_name, 'w') as fil:
             fil.write(self.render_proto())
