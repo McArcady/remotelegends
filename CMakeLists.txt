@@ -26,6 +26,9 @@ include_directories(${DFHACK_DIR}/library/include)
 add_compile_options("-O0")
 add_definitions(-DLINUX_BUILD)
 
+# target to generate all proto files (needed since pb dependencies cannot be handled precisely)
+add_custom_target(df_all_xml)
+add_custom_target(proto_all)
 
 #
 # identify global types dependencies
@@ -81,6 +84,7 @@ foreach (xml_file ${structures})
   string(REGEX REPLACE "/" "_" struct_target ${filter})
   string(REGEX REPLACE "\\." "_" struct_target ${struct_target})
   add_custom_target(${struct_target} DEPENDS ${proto_files} ${header_files} ${source_files})
+  add_dependencies(df_all_xml ${struct_target})
 
   # generate protobuf code
   string(REPLACE ".proto" ".pb.cc" proto_sources "${proto_files}")
@@ -96,7 +100,8 @@ foreach (xml_file ${structures})
 
   # define target for the protobuf code
   add_custom_target(proto_${struct_target} DEPENDS ${proto_sources} ${proto_headers})
-
+  add_dependencies(proto_all proto_${struct_target})
+  
   # define target for each convertible type
   foreach(cpp_file ${source_files})
 	get_filename_component(my_target ${cpp_file} NAME)
