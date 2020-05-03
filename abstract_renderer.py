@@ -86,6 +86,14 @@ class AbstractRenderer:
     def get_typedef_name(self, xml, name):
         tname = xml.get(f'{self.ns}typedef-name')
         if not tname:
+            tname = self.get_type_name(xml, name)
+        return tname
+
+    def get_type_name(self, xml, name=None):
+        tname = xml.get('type-name')
+        if not tname:
+            if not name:
+                name = AbstractRenderer.get_name(self, xml)[0]
             tname = 'T_' + name
         return tname
 
@@ -105,9 +113,9 @@ class AbstractRenderer:
         elif meta == 'enum-type':
             return self.render_type_enum(xml)
         elif meta == 'class-type':
-            return self.render_struct_type(xml)
+            return self.render_type_struct(xml)
         elif meta == 'struct-type':
-            return self.render_struct_type(xml)
+            return self.render_type_struct(xml)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_field_impl(self, xml, ctx, comment=''):
@@ -118,13 +126,13 @@ class AbstractRenderer:
                 return '// ignored field ' + AbstractRenderer.get_name(self, xml)[0]
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
-            return comment + self.render_compound(xml, ctx)
+            return comment + self.render_field_compound(xml, ctx)
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':
-            return self.render_simple_field(xml, ctx)
+            return self.render_field_simple(xml, ctx)
+        elif meta == 'global':
+            return comment + self.render_field_global(xml, ctx)
         elif meta == 'container' or meta == 'static-array':
             return comment + self.render_container(xml, ctx)
-        elif meta == 'global':
-            return comment + self.render_global(xml, ctx)
         elif meta == 'pointer':
             return comment + self.render_pointer(xml, ctx)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))

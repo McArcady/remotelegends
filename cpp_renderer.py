@@ -76,7 +76,7 @@ class CppRenderer(AbstractRenderer):
         }
         """ % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
         
-    def render_bitfield(self, xml):
+    def render_field_bitfield(self, xml):
         name = self.get_name(xml)[0]
         tname = self.get_typedef_name(xml, name)
         out = '  proto->mutable_%s()->set_flags(dfhack->%s.whole);\n' % (
@@ -84,7 +84,7 @@ class CppRenderer(AbstractRenderer):
         return out
 
     
-    # fields & containers
+    # simple fields
 
     def _convert_tname(self, tname):
         if self.is_primitive_type(tname):
@@ -95,12 +95,33 @@ class CppRenderer(AbstractRenderer):
             tname = 'bytes'
         return tname
 
-    def render_simple_field(self, xml, ctx):
+    def render_field_simple(self, xml, ctx):
         name = self.get_name(xml)
         return '  ' + 'proto->set_%s(dfhack->%s);\n' % (
             name[0], name[1]
         )
+    
+    def render_field_global(self, xml, ctx=None):
+        name = self.get_name(xml)
+        tname = xml.get('type-name')
+        assert tname
+        subtype = xml.get(f'{self.ns}subtype')
+        if subtype == 'enum':
+            self.imports.add(tname)
+            return self.render_field_enum(xml)
+        if subtype == 'bitfield':
+            self.imports.add(tname)
+            return self.render_field_bitfield(xml)
+        if subtype == 'df-linked-list':
+            self.imports.add(tname)
+        self.dfproto_imports.add(tname)
+        return '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
+            tname, name[0], name[1]
+        )
 
+
+    # pointers and containers
+    
     def render_pointer(self, xml, ctx):
         if not ctx.name:
             ctx.name = self.get_name(xml)[0]
@@ -122,7 +143,7 @@ class CppRenderer(AbstractRenderer):
 
     def render_container(self, xml, ctx):
         if xml.get(f'{self.ns}subtype') == 'df-linked-list':
-            return self.render_global(xml)
+            return self.render_field_global(xml)
         if xml.get(f'{self.ns}subtype') == 'df-flagarray':
             return '// flagarrays not converted yet\n'
         proto_name = name = self.get_name(xml)[0]
@@ -165,20 +186,24 @@ class CppRenderer(AbstractRenderer):
                 item_str = 'proto->add_%s(dfhack->%s[i]);' % (
                     name, name
                 )
-            elif xml[0].get(f'{self.ns}meta') == 'compound':
-                out += self.render_anon_compound(xml[0], name)
-                item_str = 'describe_%s(proto->add_%s(), &dfhack->%s[i]);' % (
-                    'T_'+name, name, name
-                )
             else:
-                tname = xml[0].get('type-name')
-                if self.is_primitive_type(tname):
-                    return self.render_field(xml[0], Context(name))
-                self.imports.add(tname)
-                self.dfproto_imports.add(tname)
-                item_str = 'describe_%s(proto->add_%s(), &dfhack->%s[i]);' % (
-                    tname, name, name
-                )
+                meta = xml[0].get(f'{self.ns}meta')
+                if meta == 'compound':
+                    out += self.render_anon_compound(xml[0], name)
+                    item_str = 'describe_%s(proto->add_%s(), &dfhack->%s[i]);' % (
+                        'T_'+name, name, name
+                    )
+                elif meta=='container' or meta=='static-array':
+                    return '// ignored container of containers %s\n' % (name)
+                else:
+                    tname = xml[0].get('type-name')
+                    if self.is_primitive_type(tname):
+                        return self.render_field(xml[0], Context(name))
+                    self.imports.add(tname)
+                    self.dfproto_imports.add(tname)
+                    item_str = 'describe_%s(proto->add_%s(), &dfhack->%s[i]);' % (
+                        tname, name, name
+                    )
         elif tname == None:
             return '// ignored container ' + name
         if tname == 'bytes':
@@ -196,28 +221,10 @@ class CppRenderer(AbstractRenderer):
         }""" % ( count, item_str )
         return out
     
-    def render_global(self, xml, ctx=None):
-        name = self.get_name(xml)
-        tname = xml.get('type-name')
-        assert tname
-        subtype = xml.get(f'{self.ns}subtype')
-        if subtype == 'enum':
-            self.imports.add(tname)
-            return self.render_field_enum(xml)
-        if subtype == 'bitfield':
-            self.imports.add(tname)
-            return self.render_bitfield(xml)
-        if subtype == 'df-linked-list':
-            self.imports.add(tname)
-        self.dfproto_imports.add(tname)
-        return '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
-            tname, name[0], name[1]
-        )
-    
     
     # structs
 
-    def render_struct_type(self, xml, tname=None):
+    def render_type_struct(self, xml, tname=None):
         if not tname:
             tname = xml.get('type-name')
         out = 'void %s::describe_%s(%s::%s* proto, df::%s* dfhack) {\n' % (
@@ -250,12 +257,12 @@ class CppRenderer(AbstractRenderer):
         out += '};\n'
         return out
 
-    def render_compound(self, xml, ctx):
+    def render_field_compound(self, xml, ctx):
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'enum':
             return self.render_field_enum(xml)
         if subtype == 'bitfield':
-            return self.render_bitfield(xml)
+            return self.render_field_bitfield(xml)
         
         anon = xml.get(f'{self.ns}anon-compound')
         union = xml.get('is-union')

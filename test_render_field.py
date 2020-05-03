@@ -62,8 +62,8 @@ class TestRenderField(unittest.TestCase):
         """
         PROTO = """
         enum T_state {
-          state_started = 0;
-          state_active = 1;
+          T_state_started = 0;
+          T_state_active = 1;
         }
         required T_state state = 1;
         """
@@ -85,8 +85,8 @@ class TestRenderField(unittest.TestCase):
         """
         PROTO = """
         enum T_role {
-          role_Other = 0; /* eat, drink, pickup equipment */
-          role_Reagent = 1;
+          T_role_Other = 0; /* eat, drink, pickup equipment */
+          T_role_Reagent = 1;
         }
         required T_role role = 1;
         """
@@ -490,8 +490,50 @@ class TestRenderField(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
+    def test_render_field_array_of_vectors(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="2" ld:meta="static-array" name="layer_x" count="5" ld:is-container="true">
+            <ld:item ld:meta="container" ld:level="3" ld:subtype="stl-vector" type-name="int16_t" ld:is-container="true">
+              <ld:item ld:level="4" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+            </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        # FIXME: fix after refactoring
+        PROTO = """
+        // ignored container of containers layer_x
+        """
+        CPP =  """
+        // ignored container of containers layer_x
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+    def test_render_field_array_of_arrays(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="static-array" name="supermovie_sound_time" count="16" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="static-array" count="200" type-name="int32_t" ld:is-container="true">
+              <ld:item ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+              </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        # FIXME: fix after refactoring
+        PROTO = """
+        // ignored container of containers supermovie_sound_time
+        """
+        CPP =  """
+        // ignored container of containers supermovie_sound_time
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
     @unittest.skip('FIXME')
-    def test_render_field_container_of_container(self):
+    def test_render_field_container_of_pointers_to_containers(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:meta="container" ld:level="3" ld:subtype="stl-vector" name="region_masks" ld:is-container="true">
@@ -503,14 +545,12 @@ class TestRenderField(unittest.TestCase):
         </ld:field>
         </ld:data-definition>
         """
+        # FIXME: fix after refactoring
         PROTO = """
-        message T_region_masks {
-          message T_region_masks_inner {
-            repeated uint32 value = 1;
-          }
-          repeated T_region_masks_inner value = 1;
-        }
-        repeated T_region_masks region_masks = 1;
+        // ignored container of containers region_masks
+        """
+        CPP =  """
+        // ignored container of containers region_masks
         """
         CPP = None
         IMPORTS = []
@@ -660,5 +700,52 @@ class TestRenderField(unittest.TestCase):
         describe_T_anon_1(proto->mutable_anon_1(), &dfhack->anon_1);
         """
         IMPORTS = ['item_type']
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
+
+
+    #
+    # union
+    #
+
+    def test_render_field_union_of_compounds(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field name="abuse_data" is-union="true" ld:level="1" ld:meta="compound">
+            <ld:field name="Piled" ld:level="2" ld:meta="compound">
+                <ld:field ld:subtype="enum" name="pile_type" base-type="int32_t" ld:level="3" ld:meta="compound">
+                    <enum-item name="GrislyMound"/>
+                    <enum-item name="GrotesquePillar"/>
+                    <enum-item name="GruesomeSculpture"/>
+                </ld:field>
+            </ld:field>
+            <ld:field name="Flayed" ld:level="2" ld:meta="compound">
+                <ld:field name="structure" ref-target="abstract_building" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+            </ld:field>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message T_Piled {
+          enum T_pile_type {
+            T_pile_type_GrislyMound = 0;
+            T_pile_type_GrotesquePillar = 1;
+            T_pile_type_GruesomeSculpture = 2;
+          }
+          required T_pile_type pile_type = 1;
+        }
+        message T_Flayed {
+          required int32 structure = 1;
+        }
+        oneof abuse_data {
+          T_Piled Piled = 1;
+          T_Flayed Flayed = 2;
+        }
+        """
+        # FIXME
+        CPP = """
+        // failed to find a discriminator for union T_abuse_data
+        """
+        IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
