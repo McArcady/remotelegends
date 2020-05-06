@@ -28,9 +28,9 @@ class TestRenderType(unittest.TestCase):
         with open(OUTPUT_FNAME, 'a') as fil:
             fil.write(self.output)
 
-    @classmethod
-    def tearDownClass(cls):
-        os.remove(OUTPUT_FNAME)
+    # @classmethod
+    # def tearDownClass(cls):
+    #     os.remove(OUTPUT_FNAME)
 
     def assertStructEqual(self, str1, str2):
         self.assertEqual(''.join(str1.split()), ''.join(str2.split()), str1+'/'+str2)
@@ -384,7 +384,8 @@ class TestRenderType(unittest.TestCase):
         """
         PROTO = """
         message adventure_item {
-          required adventure_item_interact_choicest parent = 1; /* parent type */
+          /* parent type */
+          required adventure_item_interact_choicest parent = 1;
           optional int32 anon_1_ref = 2;
         }
         """

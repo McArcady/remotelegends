@@ -63,9 +63,9 @@ class AbstractRenderer:
         self.exceptions_index.append((tname, field))
         return self
 
-    def ident(self, xml):
+    def ident(self, xml, extra_ident=0):
         ident = xml.get(f'{self.ns}level') or 1
-        return '  ' * int(ident)
+        return '  ' * (int(ident) + extra_ident)
 
     def get_name(self, xml):
         name = xml.get('name')
@@ -97,10 +97,12 @@ class AbstractRenderer:
             tname = 'T_' + name
         return tname
 
-    def append_comment(self, xml, line):
+    def append_comment(self, xml, line=''):
+        if line:
+            line += ' '
         comment = xml.get('comment')
         if comment:
-            return line + ' /* ' + comment + ' */'
+            return line + '/* ' + comment + ' */'
         return line
 
 
@@ -123,7 +125,7 @@ class AbstractRenderer:
             found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
             if found and found[0] is xml:
                 # ignore this field
-                return '// ignored field ' + AbstractRenderer.get_name(self, xml)[0]
+                return self.ident(xml) + '// ignored field %s\n' % (AbstractRenderer.get_name(self, xml)[0])
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
             return comment + self.render_field_compound(xml, ctx)
