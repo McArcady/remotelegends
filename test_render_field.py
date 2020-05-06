@@ -561,20 +561,25 @@ class TestRenderField(unittest.TestCase):
     #
     # pointer
     #
-    
-    def test_render_field_pointer_to_container(self):
+
+    @unittest.skip('FIXME: no autoconv of pointers to refs')
+    def test_render_field_pointer_to_global_type(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
-        <ld:field ld:level="1" ld:meta="pointer" name="temporary_trait_changes" comment="sum of inebriation or so personality changing effects" ld:is-container="true">
-          <ld:item ld:level="2" ld:meta="static-array" type-name="int16_t" name="traits" count="50" index-enum="personality_facet_type" ld:is-container="true">
-            <ld:item ld:level="3" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
-          </ld:item>
+        <ld:field ld:level="1" ld:meta="pointer" name="profile" type-name="workshop_profile" ld:is-container="true">
+          <ld:item ld:level="2" ld:meta="global" type-name="workshop_profile"/>
         </ld:field>
         </ld:data-definition>
         """
         PROTO = """
-        repeated int32 temporary_trait_changes = 1;
+        optional workshop_profile profile = 1;
         """
+        CPP =  """
+        describe_workshop_profile(proto->mutable_profile(), dfhack->profile);
+        """
+        IMPORTS = ['workshop_profile']
+        DFPROTO_IMPORTS = ['workshop_profile']
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_render_field_anon_pointer(self):
         XML = """
@@ -626,6 +631,29 @@ class TestRenderField(unittest.TestCase):
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'entity_claim_mask')
+
+    def test_render_field_pointer_to_array(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="pointer" name="temporary_trait_changes" comment="sum of inebriation or so personality changing effects" ld:is-container="true">
+          <ld:item ld:level="2" ld:meta="static-array" type-name="int16_t" name="traits" count="50" index-enum="personality_facet_type" ld:is-container="true">
+            <ld:item ld:level="3" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+          </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        /* sum of inebriation or so personality changing effects */
+        repeated int32 temporary_trait_changes = 1;
+        """
+        CPP =  """
+        for (size_t i=0; i<50; i++) {
+          proto->add_temporary_trait_changes(dfhack->temporary_trait_changes[i]);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_render_field_pointer_to_unknown_type(self):
         XML = """

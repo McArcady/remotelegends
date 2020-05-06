@@ -101,8 +101,9 @@ class CppRenderer(AbstractRenderer):
             name[0], name[1]
         )
     
-    def render_field_global(self, xml, ctx=None):
-        name = self.get_name(xml)
+    def render_field_global(self, xml, ctx):
+        if not ctx.name:
+            ctx.name = self.get_name(xml)[0]
         tname = xml.get('type-name')
         assert tname
         subtype = xml.get(f'{self.ns}subtype')
@@ -116,7 +117,7 @@ class CppRenderer(AbstractRenderer):
             self.imports.add(tname)
         self.dfproto_imports.add(tname)
         return '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
-            tname, name[0], name[1]
+            tname, ctx.name, ctx.name
         )
 
 
@@ -143,11 +144,14 @@ class CppRenderer(AbstractRenderer):
 
     def render_container(self, xml, ctx):
         if xml.get(f'{self.ns}subtype') == 'df-linked-list':
-            return self.render_field_global(xml)
+            return self.render_field_global(xml, ctx)
         if xml.get(f'{self.ns}subtype') == 'df-flagarray':
             return '// flagarrays not converted yet\n'
-        proto_name = name = self.get_name(xml)[0]
-        dfhack_name = self.get_name(xml)[1]
+        if ctx.name:
+            proto_name = dfhack_name = name = ctx.name
+        else:
+            proto_name = name = self.get_name(xml)[0]
+            dfhack_name = self.get_name(xml)[1]
         key = ''
         deref = False
         out = ''
