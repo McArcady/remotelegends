@@ -126,35 +126,6 @@ class TestRenderType(unittest.TestCase):
           proto->set_flags(dfhack->whole);
         }
         """
-
-
-    #
-    # df-linked-list
-    #
-    
-    def test_render_global_type_struct_with_recursive_ref(self):
-        XML = """
-        <ld:data-definition xmlns:ld="ns">
-        <ld:global-type ld:meta="struct-type" ld:subtype="df-linked-list-type" ld:level="0" type-name="job_list_link" item-type="job">
-          <ld:field name="next" type-name="job_list_link" ld:level="1" ld:meta="pointer" ld:is-container="true">
-            <ld:item ld:level="2" ld:meta="global" type-name="job_list_link"/>
-</ld:field>
-        </ld:global-type>
-        </ld:data-definition>
-        """
-        PROTO = """
-        message job_list_link {
-          optional int32 next_ref = 1;
-        }
-        """
-        CPP = """
-        void DFProto::describe_job_list_link(dfproto::job_list_link* proto, df::job_list_link* dfhack) {
-          proto->set_next_ref(dfhack->next->id);
-        }
-        """
-        IMPORTS = []
-        DFPROTO_IMPORTS = ['job_list_link']
-        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
         
 
     #
@@ -321,30 +292,6 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_global_type_struct_with_list_link(self):
-        XML = """
-        <ld:data-definition xmlns:ld="ns">
-        <ld:global-type ld:meta="class-type" ld:level="0" type-name="projectile" original-name="projst" df-list-link-type="proj_list_link" df-list-link-field="link" key-field="id">
-          <ld:field ld:level="1" ld:meta="pointer" name="link" type-name="proj_list_link" ld:is-container="true">
-            <ld:item ld:level="2" ld:meta="global" type-name="proj_list_link"/>
-        </ld:field>
-        </ld:global-type>
-        </ld:data-definition>
-        """
-        PROTO = """
-        message projectile {
-          optional int32 link_ref = 1;
-        }
-        """
-        CPP = """
-        void DFProto::describe_projectile(dfproto::projectile* proto, df::projectile* dfhack) {
-          proto->set_link_ref(dfhack->link->id);
-        }
-        """
-        IMPORTS = []
-        DFPROTO_IMPORTS = ['proj_list_link']
-        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
-
     def test_render_global_type_struct_with_container_of_pointers(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -358,17 +305,17 @@ class TestRenderType(unittest.TestCase):
         """
         PROTO = """
         message conversation {
-          repeated int32 unk_54_ref = 1;
+          repeated nemesis_record unk_54 = 1;
         }
         """
         CPP = """
         void DFProto::describe_conversation(dfproto::conversation* proto, df::conversation* dfhack) {
 	  for (size_t i=0; i<dfhack->unk_54.size(); i++) {
-	    proto->add_unk_54_ref(dfhack->unk_54[i]->id);
+	    describe_nemesis_record(proto->add_unk_54(), dfhack->unk_54[i]);
 	  }
         }
         """
-        IMPORTS = []
+        IMPORTS = ['nemesis_record']
         DFPROTO_IMPORTS = ['nemesis_record']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
@@ -386,16 +333,16 @@ class TestRenderType(unittest.TestCase):
         message adventure_item {
           /* parent type */
           required adventure_item_interact_choicest parent = 1;
-          optional int32 anon_1_ref = 2;
+          optional item anon_1 = 2;
         }
         """
         CPP = """
         void DFProto::describe_adventure_item(dfproto::adventure_item* proto, df::adventure_item* dfhack) {
 	  describe_adventure_item_interact_choicest(proto->mutable_parent(), dfhack);
-	  proto->set_anon_1_ref(dfhack->anon_1->id);
+	  describe_item(proto->mutable_anon_1(), dfhack->anon_1);
         }
         """
-        IMPORTS = ['adventure_item_interact_choicest']
+        IMPORTS = ['adventure_item_interact_choicest', 'item']
         DFPROTO_IMPORTS = ['adventure_item_interact_choicest', 'item']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
@@ -430,7 +377,7 @@ class TestRenderType(unittest.TestCase):
 	      proto->add_entities(dfhack->entities[i]);
 	    }
           };
-          describe_T_map(proto->mutable_map(), &dfhack->map);
+          describe_T_map(proto->mutable_map(), dfhack->map);
         }
         """
         IMPORTS = []
@@ -522,4 +469,30 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.sut_cpp.add_exception_rename('ld:global-type[@type-name="entity_position_raw"]/ld:field[@name="squad_size"]', 'squad_sz')
         self.sut_proto.add_exception_rename('ld:global-type[@type-name="entity_position_raw"]/ld:field[@name="squad_size"]', 'squad_sz')
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+    
+    def test_index_field(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:subtype="df-linked-list-type" ld:level="0" type-name="job_list_link" item-type="job">
+          <ld:field name="next" type-name="job_list_link" ld:level="1" ld:meta="pointer" ld:is-container="true">
+            <ld:item ld:level="2" ld:meta="global" type-name="job_list_link"/>
+          </ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message job_list_link {
+          optional int32 next_id = 1;
+        }
+        """
+        CPP = """
+        void DFProto::describe_job_list_link(dfproto::job_list_link* proto, df::job_list_link* dfhack) {
+          proto->set_next_id(dfhack->next->id);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = ['job_list_link']
+        self.sut_cpp.add_exception_index('job_list_link', 'id')
+        self.sut_proto.add_exception_index('job_list_link', 'id')
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)

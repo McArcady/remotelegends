@@ -62,7 +62,7 @@ class TestCppRenderer(unittest.TestCase):
           }
         }
         """)
-
+    
 
     #
     # prototype

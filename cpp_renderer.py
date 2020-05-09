@@ -9,6 +9,11 @@ class Context:
     def __init__(self, name=None, ident=None):
         self.name = name
         self.ident = ident or ''
+        self.deref = False
+
+    def set_deref(self, deref):
+        self.deref = deref
+        return self
 
 
 class CppRenderer(AbstractRenderer):
@@ -116,8 +121,9 @@ class CppRenderer(AbstractRenderer):
         if subtype == 'df-linked-list':
             self.imports.add(tname)
         self.dfproto_imports.add(tname)
-        return '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
-            tname, ctx.name, ctx.name
+        self.imports.add(tname)
+        return '  ' + 'describe_%s(proto->mutable_%s(), %sdfhack->%s);\n' % (
+            tname, ctx.name, '&' if not ctx.deref else '', ctx.name
         )
 
 
@@ -127,25 +133,28 @@ class CppRenderer(AbstractRenderer):
         if not ctx.name:
             ctx.name = self.get_name(xml)[0]
         tname = xml.get('type-name')
-        if tname == None:
-            if len(xml):
-                return self.render_field(xml[0], ctx)
-            else:
-                # pointer to anon type
-                return '  // ignored pointer to unknown type'
         if self.is_primitive_type(tname):
             return '  ' + 'proto->set_%s(*dfhack->%s);\n' % (
                 ctx.name, ctx.name
             )
-        self.dfproto_imports.add(tname)
-        return '  ' + 'proto->set_%s_ref(dfhack->%s->id);\n' % (
-            ctx.name, ctx.name
-        )
+        # replace type with an id ?
+        for k,v in iter(self.exceptions_index):
+            if k == tname:
+                self.dfproto_imports.add(tname)
+                return 'proto->set_%s_%s(dfhack->%s->%s);\n' % (
+                    ctx.name, v, ctx.name,v 
+                )
+        if len(xml):
+            return self.render_field(xml[0], ctx.set_deref(True))
+        else:
+            # pointer to anon type
+            return '  // ignored pointer to unknown type'
 
     def render_container(self, xml, ctx):
-        if xml.get(f'{self.ns}subtype') == 'df-linked-list':
+        subtype = xml.get(f'{self.ns}subtype')
+        if subtype == 'df-linked-list':
             return self.render_field_global(xml, ctx)
-        if xml.get(f'{self.ns}subtype') == 'df-flagarray':
+        if subtype == 'df-flagarray':
             return '// flagarrays not converted yet\n'
         if ctx.name:
             proto_name = dfhack_name = name = ctx.name
@@ -161,24 +170,23 @@ class CppRenderer(AbstractRenderer):
             if self.is_primitive_type(tname):
                 deref = True
             else:
+                self.imports.add(tname)
                 self.dfproto_imports.add(tname)
-                proto_name = name + '_ref'
-                key = '->id'
                 for k,v in iter(self.exceptions_index):
                     if k == tname:
+                        proto_name = name + '_ref'
                         key = '->'+v
-        if not tname:
-            tname = xml.get('type-name')
-        if tname == 'pointer':
-            tname = 'int32'
-            name += '_ref'
-        elif tname == None and len(xml):
+                if not key:
+                    item_str = 'describe_%s(proto->add_%s(), dfhack->%s[i]);' % (
+                        tname, proto_name, name
+                    )                
+        if not tname and len(xml):
             subtype = xml[0].get(f'{self.ns}subtype')
+            tname = xml[0].get('type-name')
             if subtype == 'bitfield':
                 key = '.whole'
                 proto_name = name + '()->set_flags'
-            elif subtype == 'enum':
-                tname = xml[0].get('type-name')
+            elif subtype == 'enum' or tname and tname.endswith('_type'):
                 if tname:
                     self.imports.add(tname)
                 else:
@@ -192,7 +200,14 @@ class CppRenderer(AbstractRenderer):
                 )
             else:
                 meta = xml[0].get(f'{self.ns}meta')
-                if meta == 'compound':
+                if meta == 'pointer':
+                    if len(xml[0]) == 0:
+                        return self.ident(xml) + '// ignored empty container ' + name
+                    out += self.render_anon_compound(xml[0][0], name)
+                    item_str = 'describe_%s(proto->add_%s(), dfhack->%s[i]);' % (
+                        'T_'+name, name, name
+                    )                    
+                elif meta == 'compound':
                     out += self.render_anon_compound(xml[0], name)
                     item_str = 'describe_%s(proto->add_%s(), &dfhack->%s[i]);' % (
                         'T_'+name, name, name
@@ -279,8 +294,8 @@ class CppRenderer(AbstractRenderer):
             ctx.name = self.get_name(xml)[0]
         tname = self.get_typedef_name(xml, ctx.name)
         out  = self.copy().render_anon_compound(xml, ctx.name)
-        out += '  ' + 'describe_%s(proto->mutable_%s(), &dfhack->%s);\n' % (
-            tname, ctx.name, ctx.name
+        out += '  ' + 'describe_%s(proto->mutable_%s(), %sdfhack->%s);\n' % (
+            tname, ctx.name, '&' if ctx.deref is False else '', ctx.name
         )
         return out
     

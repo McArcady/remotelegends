@@ -203,8 +203,12 @@ class ProtoRenderer(AbstractRenderer):
         if self.is_primitive_type(tname):
             tname = self.convert_type(tname)
             return self._render_line(xml, tname, ctx)
-        # ref to complex type
-        return self._render_line(xml, 'int32', ctx.set_name(ctx.name+'_ref'))
+        # replace type with an id ?
+        for k,v in iter(self.exceptions_index):
+            if k == tname:
+                key = '_'+v
+                return self._render_line(xml, 'int32', ctx.set_name(ctx.name+key))
+        return self.render_field(xml[0], ctx)
 
     def render_container(self, xml, ctx):
         if not ctx.name:
@@ -213,8 +217,7 @@ class ProtoRenderer(AbstractRenderer):
             return self.render_field_global(xml, ctx)
         tname = xml.get('pointer-type')
         if tname and not self.is_primitive_type(tname):
-            # convert to list of refs to avoid circular dependencies
-            return self._render_line(xml, 'int32', ctx.set_name(ctx.name+'_ref').set_keyword('repeated'))
+            return self.render_pointer(xml[0], ctx.set_keyword('repeated'))            
         if not tname:
             tname = xml.get('type-name')
         if tname == 'pointer':
@@ -251,7 +254,7 @@ class ProtoRenderer(AbstractRenderer):
             tname = self._convert_tname(tname)
             return self._render_line(xml, tname, ctx.set_keyword('repeated'))
         elif len(xml):
-            return self.render_field(xml[0], ctx)
+            return self.render_field(xml[0], ctx.set_keyword('repeated'))
         # container of unknown type
         return '  // ignored container %s\n' % (ctx.name)
         

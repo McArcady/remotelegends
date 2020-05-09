@@ -200,7 +200,7 @@ class TestRenderField(unittest.TestCase):
     # container
     #
     
-    def test_render_field_container(self):
+    def test_render_field_container_vector_of_primitives(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
           <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" type-name="int16_t" name="talk_choices" ld:is-container="true">
@@ -259,7 +259,7 @@ class TestRenderField(unittest.TestCase):
         IMPORTS = ['coord']
         DFPROTO_IMPORTS = ['coord']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
-
+        
     def test_render_field_container_of_anon_compounds(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -365,6 +365,28 @@ class TestRenderField(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
+    # suffix '_type' is automatically interpreted as an enum type
+    def test_render_field_container_of_enums_with_suffix_type(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="2" ld:meta="static-array" name="relationship" type-name="vague_relationship_type" count="6" comment="unused elements are uninitialized" ld:is-container="true">
+          <ld:item ld:level="3" ld:meta="global" type-name="vague_relationship_type"/>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        /* unused elements are uninitialized */
+        repeated vague_relationship_type relationship = 1;
+        """
+        CPP = """
+	for (size_t i=0; i<6; i++) {
+          proto->add_relationship(static_cast<dfproto::vague_relationship_type>(dfhack->relationship[i]));
+	}
+        """
+        IMPORTS = ['vague_relationship_type']
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
     def test_render_field_container_of_local_enums(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -447,18 +469,17 @@ class TestRenderField(unittest.TestCase):
         </ld:data-definition>
         """
         PROTO = """
-        repeated int32 children_ref = 1;
+        repeated building children = 1;
         """
         CPP = """
 	for (size_t i=0; i<dfhack->children.size(); i++) {
-	  proto->add_children_ref(dfhack->children[i]->id);
+          describe_building(proto->add_children(), dfhack->children[i]);
 	}
         """
-        IMPORTS = []
+        IMPORTS = ['building']
         DFPROTO_IMPORTS = ['building']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    @unittest.skip('FIXME: added to ignore list')
     def test_render_field_container_of_pointers_to_anon_compound(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -483,7 +504,7 @@ class TestRenderField(unittest.TestCase):
           proto->set_idx(dfhack->idx);
         };
         for (size_t i=0; i<dfhack->postings.size(); i++) {
-          describe_T_postings(proto->add_postings(), &dfhack->postings[i]);
+          describe_T_postings(proto->add_postings(), dfhack->postings[i]);
         }
         """
         IMPORTS = []
@@ -562,7 +583,6 @@ class TestRenderField(unittest.TestCase):
     # pointer
     #
 
-    @unittest.skip('FIXME: no autoconv of pointers to refs')
     def test_render_field_pointer_to_global_type(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -626,7 +646,7 @@ class TestRenderField(unittest.TestCase):
 	    proto->add_entities(dfhack->entities[i]);
 	  }
         };
-        describe_T_map(proto->mutable_map(), &dfhack->map);
+        describe_T_map(proto->mutable_map(), dfhack->map);
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -689,19 +709,19 @@ class TestRenderField(unittest.TestCase):
         """
         PROTO = """
         message T_unk {
-          optional int32 event_ref = 1;
+          optional entity_event event = 1;
           required int32 anon_2 = 2;
         }
         required T_unk unk = 1;
         """
         CPP = """
         auto describe_T_unk = [](dfproto::mytype_T_unk* proto, df::mytype::T_unk* dfhack) {
-          proto->set_event_ref(dfhack->event->id);
+          describe_entity_event(proto->mutable_event(), dfhack->event);
           proto->set_anon_2(dfhack->anon_2);
         };
         describe_T_unk(proto->mutable_unk(), &dfhack->unk);
         """
-        IMPORTS = []
+        IMPORTS = ['entity_event']
         DFPROTO_IMPORTS = ['entity_event']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
