@@ -43,7 +43,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
             int32 glorify_hfid = 2;
             int32 artifact_is_heirloom_of_family_hfid = 3;
           }
-          // ignored field ignore_me
+          /* ignored field ignore_me */
         }
         """
         self.CPP = """
@@ -64,7 +64,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
             default:
               proto->clear_data();           
           }
-          // ignored field ignore_me
+          /* ignored field ignore_me */
 	}
         """
         self.H = """

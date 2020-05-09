@@ -51,6 +51,8 @@ class GlobalTypeRenderer:
             rdr.add_exception_rename(tokens[1], tokens[2])
         for tokens in self.exceptions_ignore:
             rdr.add_exception_ignore(tokens[1])
+        for tokens in self.exceptions_index:
+            rdr.add_exception_index(tokens[1], tokens[2])
         typout = rdr.render_type(self.xml)
         out  = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += 'syntax = "proto%d";\n' % (self.version)
