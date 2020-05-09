@@ -422,10 +422,10 @@ class TestRenderField(unittest.TestCase):
         """
         PROTO = """
         /* not saved */
-        // ignored container anon_1
+        /* ignored container anon_1 */
         """
         CPP = """
-        // ignored container anon_1
+        /* ignored container anon_1 */
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -523,10 +523,10 @@ class TestRenderField(unittest.TestCase):
         """
         # FIXME: fix after refactoring
         PROTO = """
-        // ignored container of containers layer_x
+        /* ignored container of containers layer_x */
         """
         CPP =  """
-        // ignored container of containers layer_x
+        /* ignored container of containers layer_x */
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -544,10 +544,10 @@ class TestRenderField(unittest.TestCase):
         """
         # FIXME: fix after refactoring
         PROTO = """
-        // ignored container of containers supermovie_sound_time
+        /* ignored container of containers supermovie_sound_time */
         """
         CPP =  """
-        // ignored container of containers supermovie_sound_time
+        /* ignored container of containers supermovie_sound_time */
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -568,10 +568,10 @@ class TestRenderField(unittest.TestCase):
         """
         # FIXME: fix after refactoring
         PROTO = """
-        // ignored container of containers region_masks
+        /* ignored container of containers region_masks */
         """
         CPP =  """
-        // ignored container of containers region_masks
+        /* ignored container of containers region_masks */
         """
         CPP = None
         IMPORTS = []
@@ -682,10 +682,10 @@ class TestRenderField(unittest.TestCase):
         </ld:data-definition>
         """
         PROTO = """
-        // ignored pointer to unknown type
+        /* ignored pointer to unknown type */
         """
         CPP = """
-        // ignored pointer to unknown type
+        /* ignored pointer to unknown type */
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -792,7 +792,7 @@ class TestRenderField(unittest.TestCase):
         """
         # FIXME
         CPP = """
-        // failed to find a discriminator for union T_abuse_data
+        /* failed to find a discriminator for union T_abuse_data */
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []

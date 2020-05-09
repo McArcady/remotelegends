@@ -7,17 +7,21 @@ from lxml import etree
 from cpp_renderer import CppRenderer
 from proto_renderer import ProtoRenderer
 
-OUTPUT_FNAME = 'output.proto'
+PROTO_FNAME = 'output.proto'
+CPP_FNAME = 'output.cpp'
 
 
 class TestRenderType(unittest.TestCase):
 
-    output = ''
+    proto_output = ''
+    cpp_output = ''
 
     @classmethod
     def setUpClass(cls):
-        with open(OUTPUT_FNAME, 'w') as fil:
+        with open(PROTO_FNAME, 'w') as fil:
             fil.write('syntax = "proto2";\n')
+        with open(CPP_FNAME, 'w') as fil:
+            fil.write('')
     
     def setUp(self):
         self.sut_proto = ProtoRenderer('ns')
@@ -25,12 +29,15 @@ class TestRenderType(unittest.TestCase):
         self.maxDiff = None
 
     def tearDown(self):
-        with open(OUTPUT_FNAME, 'a') as fil:
-            fil.write(self.output)
+        with open(PROTO_FNAME, 'a') as fil:
+            fil.write(self.proto_output)
+        with open(CPP_FNAME, 'a') as fil:
+            fil.write(self.cpp_output)
 
     # @classmethod
     # def tearDownClass(cls):
-    #     os.remove(OUTPUT_FNAME)
+    #     os.remove(PROTO_FNAME)
+    #     os.remove(CPP_FNAME)
 
     def assertStructEqual(self, str1, str2):
         self.assertEqual(''.join(str1.split()), ''.join(str2.split()), str1+'/'+str2)
@@ -40,18 +47,19 @@ class TestRenderType(unittest.TestCase):
         out = self.sut_proto.render_type(xml)
         self.assertStructEqual(out, PROTO)
         self.assertEqual(sorted(list(self.sut_proto.imports)), sorted(IMPORTS))
-        self.output += out
+        self.proto_output += out
         if CPP:
             out = self.sut_cpp.render_type(xml)
             self.assertStructEqual(out, CPP)
             self.assertEqual(sorted(list(self.sut_cpp.dfproto_imports)), sorted(DFPROTO_IMPORTS))
+            self.cpp_output += out
 
 
     #
     # enum
     #
     
-    def test_render_global_type_enum(self):
+    def test_render_type_enum(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
           <ld:global-type ld:meta="enum-type" ld:level="0" type-name="ui_advmode_menu" base-type="int16_t">
@@ -71,7 +79,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
-    def test_render_global_type_enum_with_values(self):
+    def test_render_type_enum_with_values(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="enum-type" ld:level="0" type-name="conflict_level">
@@ -100,7 +108,7 @@ class TestRenderType(unittest.TestCase):
     # bitfield
     #
 
-    def test_render_global_type_bitfield(self):
+    def test_render_type_bitfield(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="bitfield-type" ld:level="0" type-name="announcement_flags">
@@ -132,7 +140,7 @@ class TestRenderType(unittest.TestCase):
     # struct/class
     #
     
-    def test_render_global_type_struct_with_primitive_fields(self):
+    def test_render_type_struct_with_primitive_fields(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation1">
@@ -157,7 +165,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_global_type_struct(self):
+    def test_render_type_struct(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="campfire">
@@ -183,7 +191,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = ['coord']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_global_type_struct_with_anon_fields(self):
+    def test_render_type_struct_with_anon_fields(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_site_link">
@@ -214,7 +222,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_global_type_struct_with_local_bitfield_and_anon_flags(self):
+    def test_render_type_struct_with_local_bitfield_and_anon_flags(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_site_link">
@@ -252,7 +260,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_global_type_struct_with_enum_and_union(self):
+    def test_render_type_struct_with_enum_and_union(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="history_event_reason_info">
@@ -292,7 +300,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_global_type_struct_with_container_of_pointers(self):
+    def test_render_type_struct_with_container_of_pointers(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation">
@@ -319,7 +327,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = ['nemesis_record']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    def test_render_global_type_struct_with_inheritance(self):
+    def test_render_type_struct_with_inheritance(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="class-type" ld:level="0" type-name="adventure_item" inherits-from="adventure_item_interact_choicest">
@@ -346,7 +354,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = ['adventure_item_interact_choicest', 'item']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
-    def test_render_global_type_with_anon_compound(self):
+    def test_render_type_with_anon_compound(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_claim_mask">
@@ -383,8 +391,49 @@ class TestRenderType(unittest.TestCase):
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+    @unittest.skip('FIXME')
+    def test_render_type_with_recursive_compounds(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="historical_entity" key-field="id" instance-vector="$global.world.entities.all">
+        <ld:field name="resources" ld:level="1" ld:meta="compound">
+          <ld:field name="metal" ld:level="2" ld:meta="compound">
+            <ld:field name="pick" type-name="material_vec_ref" ld:level="3" ld:meta="global"/>
+            <ld:field name="weapon" type-name="material_vec_ref" ld:level="3" ld:meta="global"/>
+          </ld:field>
+        </ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO =  """
+        message historical_entity {
+          message T_resources {
+            message T_metal {
+              required material_vec_ref pick = 1;
+              required material_vec_ref weapon = 2;
+            }
+            required T_metal metal = 1;
+          }
+          required T_resources resources = 1;
+        }
+        """
+        CPP = """
+        void DFProto::describe_historical_entity(dfproto::historical_entity_mask* proto, df::historical_entity* dfhack) {
+          auto describe_T_resources = [](dfproto::historical_entity_T_resources* proto, df::historical_entity::T_resources* dfhack) {
+            auto describe_T_resources_T_map = [](dfproto::historical_entity_T_resources_T_map* proto, df::historical_entity::T_resources::T_map* dfhack) {
+              describe_material_ver_ref(proto->mutable_pick(), &dfhack->pick);
+              describe_material_ver_ref(proto->mutable_weapon(), &dfhack->weapon);
+            };
+          };
+          describe_T_map(proto->mutable_map(), dfhack->map);
+        }
+        """
+        IMPORTS = ['material_vec_ref']
+        DFPROTO_IMPORTS = ['material_vec_ref']
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
-    def test_render_global_type_class(self):
+    def test_render_type_class(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="class-type" ld:level="0" type-name="adventure_movement_optionst" comment="comment">
@@ -433,12 +482,12 @@ class TestRenderType(unittest.TestCase):
         """
         PROTO = """
         message general_ref {
-          // ignored field general_refs
+          /* ignored field general_refs */
         }
         """
         CPP = """
         void DFProto::describe_general_ref(dfproto::general_ref* proto, df::general_ref* dfhack) {
-          // ignored field general_refs
+          /* ignored field general_refs */
         }
         """
         IMPORTS = []

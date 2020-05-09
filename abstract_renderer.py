@@ -125,7 +125,7 @@ class AbstractRenderer:
             found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
             if found and found[0] is xml:
                 # ignore this field
-                return self.ident(xml) + '// ignored field %s\n' % (AbstractRenderer.get_name(self, xml)[0])
+                return self.ident(xml) + '/* ignored field %s */\n' % (AbstractRenderer.get_name(self, xml)[0])
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
             return comment + self.render_field_compound(xml, ctx)

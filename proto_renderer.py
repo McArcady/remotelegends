@@ -199,7 +199,7 @@ class ProtoRenderer(AbstractRenderer):
             if len(xml):
                 return self.render_field(xml[0], ctx)
             else:
-                return self.ident(xml) + '// ignored pointer to unknown type\n'
+                return self.ident(xml) + '/* ignored pointer to unknown type */\n'
         if self.is_primitive_type(tname):
             tname = self.convert_type(tname)
             return self._render_line(xml, tname, ctx)
@@ -230,7 +230,7 @@ class ProtoRenderer(AbstractRenderer):
             if meta == 'pointer':
                 out = self.render_pointer(xml[0], ctx.set_keyword('repeated'))
             elif meta=='container' or meta=='static-array':
-                return '// ignored container of containers %s\n' % (ctx.name)
+                return '/* ignored container of containers %s*/\n' % (ctx.name)
             elif subtype == 'bitfield':
                 # local anon bitfield
                 tname = 'T_'+ctx.name
@@ -256,7 +256,7 @@ class ProtoRenderer(AbstractRenderer):
         elif len(xml):
             return self.render_field(xml[0], ctx.set_keyword('repeated'))
         # container of unknown type
-        return '  // ignored container %s\n' % (ctx.name)
+        return '  /* ignored container %s*/\n' % (ctx.name)
         
     
     # structs
