@@ -114,7 +114,7 @@ class CppRenderer(AbstractRenderer):
     def render_field_simple(self, xml, ctx):
         name = self.get_name(xml)
         return self.ident(xml, ctx.ident) + 'proto->set_%s(dfhack->%s);\n' % (
-            name[0], name[1]
+            name[0].lower(), name[1]
         )
     
     def render_field_global(self, xml, ctx):
@@ -329,7 +329,7 @@ class CppRenderer(AbstractRenderer):
         out += '      proto->clear_%s();\n' % (name[0])
         out += '  }\n'
         return out
-        
+    
 
     # main renderer
 

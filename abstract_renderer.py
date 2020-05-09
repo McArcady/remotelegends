@@ -122,6 +122,7 @@ class AbstractRenderer:
 
     def render_field_impl(self, xml, ctx, comment=''):
         for k in self.exceptions_ignore:
+            # TODO: support for xpath regex
             found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
             if found and found[0] is xml:
                 # ignore this field
