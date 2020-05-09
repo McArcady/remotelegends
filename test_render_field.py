@@ -24,7 +24,7 @@ class TestRenderField(unittest.TestCase):
         out = self.sut_proto.render_field(xml)
         self.assertStructEqual(out, PROTO)
         self.assertEqual(list(self.sut_proto.imports), IMPORTS)
-        self.sut_cpp.global_type_name = TYPE
+        self.sut_cpp.outer_types = [TYPE]
         out = self.sut_cpp.render_field(xml)
         self.assertStructEqual(out, CPP)
         self.assertEqual(list(self.sut_cpp.imports), IMPORTS)

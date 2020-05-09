@@ -1,5 +1,6 @@
 import sys
 import traceback
+import copy
 
 from abstract_renderer import AbstractRenderer
 
@@ -37,15 +38,21 @@ class CppRenderer(AbstractRenderer):
         self.dfproto_imports = set()
         # guess of the discriminant element for union
         self.last_enum_descr = None
-        self.global_type_name = None
+        self.outer_types = []
+
+    def outer_proto_tname(self):
+        return '_'.join(self.outer_types)
+
+    def outer_dfhack_tname(self):
+        return '::'.join(self.outer_types)
 
     def copy(self):
-        copy = CppRenderer(self.ns, self.proto_ns, self.cpp_ns)
-        AbstractRenderer.copy(self, copy)
-        copy.imports = self.imports
-        copy.dfproto_imports = self.dfproto_imports
-        copy.global_type_name = self.global_type_name
-        return copy
+        mycopy = CppRenderer(self.ns, self.proto_ns, self.cpp_ns)
+        AbstractRenderer.copy(self, mycopy)
+        mycopy.imports = self.imports
+        mycopy.dfproto_imports = self.dfproto_imports
+        mycopy.outer_types = copy.copy(self.outer_types)
+        return mycopy
 
     
     # enumerations
@@ -70,8 +77,8 @@ class CppRenderer(AbstractRenderer):
         else:
             # local enum
             tname = self.get_typedef_name(xml, name[0])
-            prefix = self.global_type_name + '_'
-        out = self.ident(xml) + 'proto->set_%s(static_cast<dfproto::%s%s>(dfhack->%s));\n' % (name[0], prefix, tname, name[1])
+            tname = self.outer_proto_tname() + '_' + tname
+        out = self.ident(xml) + 'proto->set_%s(static_cast<dfproto::%s>(dfhack->%s));\n' % (name[0], tname, name[1])
         return out
 
     
@@ -194,7 +201,7 @@ class CppRenderer(AbstractRenderer):
                 if tname:
                     self.imports.add(tname)
                 else:
-                    tname = self.global_type_name + '_T_' + name
+                    tname = self.outer_proto_tname() + '_T_' + name
                 item_str = 'proto->add_%s(static_cast<dfproto::%s>(dfhack->%s[i]));' % (
                     name, tname, name
                 )
@@ -270,12 +277,14 @@ class CppRenderer(AbstractRenderer):
         if not name:
             name = self.get_name(xml)[0]
         tname = self.get_typedef_name(xml, name)
+        rdr = self.copy()
+        rdr.outer_types.append(tname)
         # lambda
-        out  = self.ident(xml) + 'auto describe_%s = [](dfproto::%s_%s* proto, df::%s::%s* dfhack) {\n' % ( tname, self.global_type_name, tname, self.global_type_name, tname )
+        out  = self.ident(xml) + 'auto describe_%s = [](dfproto::%s* proto, df::%s* dfhack) {\n' % ( tname, rdr.outer_proto_tname(), rdr.outer_dfhack_tname() )
         for item in xml.findall(f'{self.ns}field'):
             name = self.get_name(item)[0]
             tname = item.get(f'{self.ns}subtype') or item.get('type-name')
-            out += self.render_field(item)
+            out += rdr.render_field(item)
         out += self.ident(xml) + '};\n'
         return out
 
@@ -331,7 +340,7 @@ class CppRenderer(AbstractRenderer):
 
     def render_type(self, xml):
         # high-order type name
-        self.global_type_name = xml.get('type-name')
+        self.outer_types.append(xml.get('type-name'))
         return self.render_type_impl(xml)
     
     def render_prototype(self, xml):

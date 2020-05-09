@@ -392,7 +392,6 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
-    @unittest.skip('FIXME')
     def test_render_type_with_recursive_compounds(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -419,14 +418,15 @@ class TestRenderType(unittest.TestCase):
         }
         """
         CPP = """
-        void DFProto::describe_historical_entity(dfproto::historical_entity_mask* proto, df::historical_entity* dfhack) {
+        void DFProto::describe_historical_entity(dfproto::historical_entity* proto, df::historical_entity* dfhack) {
           auto describe_T_resources = [](dfproto::historical_entity_T_resources* proto, df::historical_entity::T_resources* dfhack) {
-            auto describe_T_resources_T_map = [](dfproto::historical_entity_T_resources_T_map* proto, df::historical_entity::T_resources::T_map* dfhack) {
-              describe_material_ver_ref(proto->mutable_pick(), &dfhack->pick);
-              describe_material_ver_ref(proto->mutable_weapon(), &dfhack->weapon);
+            auto describe_T_metal = [](dfproto::historical_entity_T_resources_T_metal* proto, df::historical_entity::T_resources::T_metal* dfhack) {
+              describe_material_vec_ref(proto->mutable_pick(), &dfhack->pick);
+              describe_material_vec_ref(proto->mutable_weapon(), &dfhack->weapon);
             };
+            describe_T_metal(proto->mutable_metal(), &dfhack->metal);
           };
-          describe_T_map(proto->mutable_map(), dfhack->map);
+          describe_T_resources(proto->mutable_resources(), &dfhack->resources);
         }
         """
         IMPORTS = ['material_vec_ref']
