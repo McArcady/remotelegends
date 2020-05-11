@@ -57,7 +57,7 @@ class ProtoRenderer(AbstractRenderer):
         return self
 
     def get_name(self, xml):
-        # return renamed name
+        # return protobuf name
         return AbstractRenderer.get_name(self, xml)[0]
 
 
@@ -189,7 +189,7 @@ class ProtoRenderer(AbstractRenderer):
 
     # pointers and containers
     
-    def render_pointer(self, xml, ctx):
+    def render_field_pointer(self, xml, ctx):
         if ctx.keyword == 'required':
             ctx.keyword = 'optional'
         if not ctx.name:
@@ -210,14 +210,14 @@ class ProtoRenderer(AbstractRenderer):
                 return self._render_line(xml, 'int32', ctx.set_name(ctx.name+key))
         return self.render_field(xml[0], ctx)
 
-    def render_container(self, xml, ctx):
+    def render_field_container(self, xml, ctx):
         if not ctx.name:
             ctx.name = self.get_name(xml)
         if xml.get(f'{self.ns}subtype') == 'df-linked-list':
             return self.render_field_global(xml, ctx)
         tname = xml.get('pointer-type')
         if tname and not self.is_primitive_type(tname):
-            return self.render_pointer(xml[0], ctx.set_keyword('repeated'))            
+            return self.render_field_pointer(xml[0], ctx.set_keyword('repeated'))            
         if not tname:
             tname = xml.get('type-name')
         if tname == 'pointer':
@@ -228,7 +228,7 @@ class ProtoRenderer(AbstractRenderer):
             subtype = xml[0].get(f'{self.ns}subtype')
             meta = xml[0].get(f'{self.ns}meta')
             if meta == 'pointer':
-                out = self.render_pointer(xml[0], ctx.set_keyword('repeated'))
+                out = self.render_field_pointer(xml[0], ctx.set_keyword('repeated'))
             elif meta=='container' or meta=='static-array':
                 return '/* ignored container of containers %s*/\n' % (ctx.name)
             elif subtype == 'bitfield':

@@ -58,7 +58,7 @@ class TestCppRenderer(unittest.TestCase):
         self.assertStructEqual(out, """
         void DFProto::describe_interaction(dfproto::interaction* proto, df::interaction* dfhack) {
           for (size_t i=0; i<dfhack->targets.size(); i++) {
-            proto->add_targets_ref(dfhack->targets[i]->index);
+            proto->add_targets_index(dfhack->targets[i]->index);
           }
         }
         """)

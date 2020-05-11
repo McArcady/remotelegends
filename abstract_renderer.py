@@ -68,20 +68,26 @@ class AbstractRenderer:
         return '  ' * (int(ident) + extra_ident)
 
     def get_name(self, xml):
-        name = xml.get('name')
+        dfname = xml.get('name')
+        pbname = None
         for k,v in iter(self.exceptions_rename):
             found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
             if found and found[0] is xml:
-                # return protobuf name and dfhack name
-                return v, name
-        if not name:
-            name = xml.get(f'{self.ns}anon-name')
-        if not name:
+                # rename protobuf name
+                pbname = v
+        if not dfname:
+            dfname = xml.get(f'{self.ns}anon-name')
+        if not dfname:
             if self.anon_xml != xml:
                 self.anon_id += 1
                 self.anon_xml = xml
-            name = 'anon_' + str(self.anon_id)
-        return name, name
+            dfname = 'anon_' + str(self.anon_id)
+        if not pbname:
+            pbname = dfname
+        # protobuf field names are lowercase, except enum items
+        if not xml.tag == 'enum-item':
+            pbname = pbname.lower()
+        return pbname, dfname
 
     def get_typedef_name(self, xml, name):
         tname = xml.get(f'{self.ns}typedef-name')
@@ -135,7 +141,7 @@ class AbstractRenderer:
         elif meta == 'global':
             return comment + self.render_field_global(xml, ctx)
         elif meta == 'container' or meta == 'static-array':
-            return comment + self.render_container(xml, ctx)
+            return comment + self.render_field_container(xml, ctx)
         elif meta == 'pointer':
-            return comment + self.render_pointer(xml, ctx)
+            return comment + self.render_field_pointer(xml, ctx)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))

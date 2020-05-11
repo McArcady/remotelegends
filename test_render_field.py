@@ -425,7 +425,7 @@ class TestRenderField(unittest.TestCase):
         /* ignored container anon_1 */
         """
         CPP = """
-        /* ignored container anon_1 */
+        /* ignored empty container anon_1 */
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -547,7 +547,7 @@ class TestRenderField(unittest.TestCase):
         /* ignored container of containers supermovie_sound_time */
         """
         CPP =  """
-        /* ignored container of containers supermovie_sound_time */
+        /* ignored container of static-arrays supermovie_sound_time */
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -774,7 +774,7 @@ class TestRenderField(unittest.TestCase):
         </ld:data-definition>
         """
         PROTO = """
-        message T_Piled {
+        message T_piled {
           enum T_pile_type {
             T_pile_type_GrislyMound = 0;
             T_pile_type_GrotesquePillar = 1;
@@ -782,12 +782,12 @@ class TestRenderField(unittest.TestCase):
           }
           required T_pile_type pile_type = 1;
         }
-        message T_Flayed {
+        message T_flayed {
           required int32 structure = 1;
         }
         oneof abuse_data {
-          T_Piled Piled = 1;
-          T_Flayed Flayed = 2;
+          T_piled piled = 1;
+          T_flayed flayed = 2;
         }
         """
         # FIXME
