@@ -414,14 +414,13 @@ class TestRenderField(unittest.TestCase):
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
     
-    def test_render_field_container_ignored(self):
+    def test_render_field_empty_container(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" since="v0.40.01" comment="not saved" ld:is-container="true"/>
         </ld:data-definition>
         """
         PROTO = """
-        /* not saved */
         /* ignored container anon_1 */
         """
         CPP = """

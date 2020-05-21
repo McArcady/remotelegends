@@ -64,7 +64,6 @@ class TestGlobalTypeRenderer(unittest.TestCase):
             default:
               proto->clear_data();           
           }
-          /* ignored field ignore_me */
 	}
         """
         self.H = """

@@ -126,22 +126,26 @@ class AbstractRenderer:
             return self.render_type_struct(xml)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
-    def render_field_impl(self, xml, ctx, comment=''):
+    def render_field_impl(self, xml, ctx):
         for k in self.exceptions_ignore:
-            # TODO: support for xpath regex
-            found = xml.getroottree().xpath(k, namespaces={'ld': self.ns[1:-1]})
-            if found and found[0] is xml:
+            found = xml.getroottree().xpath(k, namespaces={
+                'ld': self.ns[1:-1],
+                're': 'http://exslt.org/regular-expressions'
+            })
+            if found and xml in found:
                 # ignore this field
-                return self.ident(xml) + '/* ignored field %s */\n' % (AbstractRenderer.get_name(self, xml)[0])
+                return self.ident(xml) + '/* ignored field %s */\n' % (
+                    AbstractRenderer.get_name(self, xml)[0]
+                )
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
-            return comment + self.render_field_compound(xml, ctx)
+            return self.render_field_compound(xml, ctx)
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':
             return self.render_field_simple(xml, ctx)
         elif meta == 'global':
-            return comment + self.render_field_global(xml, ctx)
+            return self.render_field_global(xml, ctx)
         elif meta == 'container' or meta == 'static-array':
-            return comment + self.render_field_container(xml, ctx)
+            return self.render_field_container(xml, ctx)
         elif meta == 'pointer':
-            return comment + self.render_field_pointer(xml, ctx)
+            return self.render_field_pointer(xml, ctx)
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))

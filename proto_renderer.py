@@ -194,6 +194,7 @@ class ProtoRenderer(AbstractRenderer):
             ctx.keyword = 'optional'
         if not ctx.name:
             ctx.name = self.get_name(xml)
+        ctx.dec_ident()            
         tname = xml.get('type-name')
         if tname == None:
             if len(xml):
@@ -230,7 +231,7 @@ class ProtoRenderer(AbstractRenderer):
             if meta == 'pointer':
                 out = self.render_field_pointer(xml[0], ctx.set_keyword('repeated'))
             elif meta=='container' or meta=='static-array':
-                return '/* ignored container of containers %s*/\n' % (ctx.name)
+                return '/* ignored container of containers %s */\n' % (ctx.name)
             elif subtype == 'bitfield':
                 # local anon bitfield
                 tname = 'T_'+ctx.name
@@ -247,7 +248,7 @@ class ProtoRenderer(AbstractRenderer):
             else:
                 # local anon compound
                 tname = 'T_'+ctx.name
-                out  = self.render_type_struct(xml[0], tname)
+                out  = self.render_type_struct(xml[0], tname, ctx)
                 out += self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
             return out
         elif self.is_primitive_type(tname):
@@ -256,7 +257,7 @@ class ProtoRenderer(AbstractRenderer):
         elif len(xml):
             return self.render_field(xml[0], ctx.set_keyword('repeated'))
         # container of unknown type
-        return '  /* ignored container %s*/\n' % (ctx.name)
+        return '  /* ignored container %s */\n' % (ctx.name)
         
     
     # structs
@@ -275,7 +276,10 @@ class ProtoRenderer(AbstractRenderer):
             self.imports.add(parent)
             value += 1        
         for item in xml.findall(f'{self.ns}field'):
-            out += self.render_field(item, Context(value, ident=ctx.ident))
+            field = self.render_field(item, Context(value, ident=ctx.ident))
+            out += field
+            if field.lstrip().startswith('/*'):
+                continue
             if item.get('is-union'):
                 value += len(item)
             else:
@@ -336,8 +340,11 @@ class ProtoRenderer(AbstractRenderer):
     def render_field(self, xml, ctx=None):
         if not ctx:
             ctx = Context()
-        comment = self.append_comment(xml, '')
-        return self.render_field_impl(xml, ctx, comment)
+        field = self.render_field_impl(xml, ctx)
+        if not field.rstrip().endswith('*/'):
+            comment = self.append_comment(xml, '')
+            return self.ident(xml, ctx.ident) + '%s\r%s' % (comment, field)
+        return field
 
     def render_type(self, xml):
         if self.proto_ns:

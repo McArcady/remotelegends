@@ -11,6 +11,7 @@ class Context:
         self.names = names
         self.ident = ident or 0
         self.deref = False
+        self.value = 0
 
     def set_deref(self, deref):
         self.deref = deref
@@ -264,7 +265,10 @@ class CppRenderer(AbstractRenderer):
         for item in xml.findall(f'{self.ns}field'):
             name = self.get_name(item)[0]
             tname = item.get(f'{self.ns}subtype') or item.get('type-name')
-            out += self.render_field(item)
+            field = self.render_field(item)
+            if field.lstrip().startswith('/*'):
+                continue
+            out += field
             value += 1
         out += '}\n'
         return out

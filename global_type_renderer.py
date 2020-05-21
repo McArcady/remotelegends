@@ -99,7 +99,7 @@ class GlobalTypeRenderer:
                 'ld': self.ns,
                 're': 'http://exslt.org/regular-expressions'
             })
-            if found and found[0] is self.xml:
+            if found and self.xml in found:
                 # ignore this type
                 return None
 

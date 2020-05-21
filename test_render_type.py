@@ -487,13 +487,42 @@ class TestRenderType(unittest.TestCase):
         """
         CPP = """
         void DFProto::describe_general_ref(dfproto::general_ref* proto, df::general_ref* dfhack) {
-          /* ignored field general_refs */
         }
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
-        self.sut_proto.add_exception_ignore('ld:global-type[@type-name="general_ref"]/ld:field[@name="general_refs"]')
-        self.sut_cpp.add_exception_ignore('ld:global-type[@type-name="general_ref"]/ld:field[@name="general_refs"]')
+        FILTER = 'ld:global-type[@type-name="general_ref"]/ld:field[@name="general_refs"]'
+        self.sut_proto.add_exception_ignore(FILTER)
+        self.sut_cpp.add_exception_ignore(FILTER)
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+    
+    def test_ignore_regex(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="mytype">
+          <ld:field name="unk_1" ld:level="1" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+          <ld:field name="id" ld:level="1" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+          <ld:field name="unk_2" ld:level="1" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message mytype {
+          /* ignored field unk_1 */
+          required int32 id = 1;
+          /* ignored field unk_2 */
+        }
+        """
+        CPP = """
+        void DFProto::describe_mytype(dfproto::mytype* proto, df::mytype* dfhack) {
+          proto->set_id(dfhack->id);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        FILTER = "ld:global-type[@type-name='mytype']/ld:field[re:match(@name, 'unk_[0-9]+')]"
+        self.sut_proto.add_exception_ignore(FILTER)
+        self.sut_cpp.add_exception_ignore(FILTER)
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_rename_field(self):
@@ -545,3 +574,51 @@ class TestRenderType(unittest.TestCase):
         self.sut_cpp.add_exception_index('job_list_link', 'id')
         self.sut_proto.add_exception_index('job_list_link', 'id')
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+
+
+    def _test_debug(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="job_handler" original-name="job_handlerst" custom-methods="true">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="df-linked-list" name="list" type-name="job_list_link" ld:is-container="true"><ld:item ld:level="2" ld:meta="global" type-name="job_list_link"/></ld:field>
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="postings" comment="entries never removed" ld:is-container="true">
+        <ld:item ld:level="2" ld:meta="pointer" ld:is-container="true">
+        <ld:item ld:meta="compound" ld:level="2">
+        <ld:field name="idx" comment="equal to position in vector" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        <ld:field ld:level="3" ld:meta="pointer" type-name="job" name="job" comment="bad if dead flag is set" ld:is-container="true"><ld:item ld:level="4" ld:meta="global" type-name="job"/></ld:field>
+        <ld:field ld:subtype="bitfield" name="flags" base-type="int32_t" ld:level="3" ld:meta="compound">
+        <ld:field name="dead" ld:level="4" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+        </ld:field>
+        <ld:field comment="not saved" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        </ld:item>
+            </ld:item>
+            </ld:field>
+        <ld:field ld:level="1" ld:meta="static-array" count="2000" ld:is-container="true">
+        <ld:item ld:meta="compound" ld:level="1">
+        <ld:field ld:level="2" ld:meta="pointer" type-name="unit" comment="List seems to be processed index 0 first and then removal swaps last to first" ld:is-container="true"><ld:item ld:level="3" ld:meta="global" type-name="unit"/></ld:field>
+        <ld:field comment="Seems to have very few bits set in lower half, (not copied with the pointer?)" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        <ld:field comment="Seems to have many bits set in lower half, (not copied with the pointer?)" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        </ld:item>
+        </ld:field>
+        <ld:field comment="next slot" ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message job_list_link {
+          optional int32 next_id = 1;
+        }
+        """
+        CPP = """
+        void DFProto::describe_job_list_link(dfproto::job_list_link* proto, df::job_list_link* dfhack) {
+          proto->set_next_id(dfhack->next->id);
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = ['job_list_link']
+        self.sut_cpp.add_exception_index('job_list_link', 'id')
+        self.sut_proto.add_exception_index('job_list_link', 'id')
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+   
