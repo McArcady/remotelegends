@@ -108,8 +108,8 @@ class AbstractRenderer:
             line += ' '
         comment = xml.get('comment')
         if comment:
-            return line + '/* ' + comment + ' */'
-        return line
+            return line + '/* ' + comment + ' */\n'
+        return line + '\n'
 
 
     # main renderer

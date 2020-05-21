@@ -72,7 +72,7 @@ class ProtoRenderer(AbstractRenderer):
         if not ctx.name:
             ctx.name = self.get_name(xml)
         out += ctx.name + ' = ' + str(ctx.value) + ';'
-        return self.append_comment(xml, out) + '\n'
+        return self.append_comment(xml, out)
 
     
     # enumerations
@@ -80,7 +80,7 @@ class ProtoRenderer(AbstractRenderer):
     def _render_enum_item(self, xml, value, prefix=''):
         name = self.get_name(xml)
         out = prefix + name + ' = ' + str(value) + ';'
-        return self.append_comment(xml, out) + '\n'
+        return self.append_comment(xml, out)
 
     def render_type_enum(self, xml, tname=None, prefix=None, extra_ident=''):
         if not tname:            
@@ -133,7 +133,7 @@ class ProtoRenderer(AbstractRenderer):
             out += self.ident(item) + '  %s = 0x%x;' % (
                 self.get_name(item), value
             )
-            out = self.append_comment(item, out) + '\n'
+            out = self.append_comment(item, out)
             value += 1
         out += self.ident(xml) + '  }\n'
         return out
@@ -146,7 +146,7 @@ class ProtoRenderer(AbstractRenderer):
         out  = ident + 'message ' + tname + ' {\n'
         out += self._render_masks(xml)
         out += ident + '  required fixed32 flags = 1;'
-        out  = self.append_comment(xml, out) + '\n'
+        out  = self.append_comment(xml, out)
         out += ident + '}\n'
         return out
     
@@ -278,8 +278,6 @@ class ProtoRenderer(AbstractRenderer):
         for item in xml.findall(f'{self.ns}field'):
             field = self.render_field(item, Context(value, ident=ctx.ident))
             out += field
-            if field.lstrip().startswith('/*'):
-                continue
             if item.get('is-union'):
                 value += len(item)
             else:
@@ -341,9 +339,9 @@ class ProtoRenderer(AbstractRenderer):
         if not ctx:
             ctx = Context()
         field = self.render_field_impl(xml, ctx)
-        if not field.rstrip().endswith('*/'):
-            comment = self.append_comment(xml, '')
-            return self.ident(xml, ctx.ident) + '%s\r%s' % (comment, field)
+        if not field.rstrip().endswith('*/') and xml.get('comment'):
+            comment = self.ident(xml) + self.append_comment(xml)
+            return self.ident(xml, ctx.ident) + '%s%s' % (comment, field)
         return field
 
     def render_type(self, xml):
@@ -351,5 +349,6 @@ class ProtoRenderer(AbstractRenderer):
             out = 'package ' + self.proto_ns + ';\n'
         else:
             out = ''
-        out = self.append_comment(xml, out) + '\n'
+        if xml.get('comment'):
+            out = self.append_comment(xml, out)
         return out + self.render_type_impl(xml)

@@ -354,7 +354,7 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = ['adventure_item_interact_choicest', 'item']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
-    def test_render_type_with_anon_compound(self):
+    def test_render_type_with_pointer_to_anon_compound(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="entity_claim_mask">
@@ -509,7 +509,7 @@ class TestRenderType(unittest.TestCase):
         PROTO = """
         message mytype {
           /* ignored field unk_1 */
-          required int32 id = 1;
+          required int32 id = 2;
           /* ignored field unk_2 */
         }
         """
@@ -576,49 +576,34 @@ class TestRenderType(unittest.TestCase):
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
 
+    #
+    # non-regression tests from bug fixing
+    #
 
-    def _test_debug(self):
+    def test_bugfix_pointer_with_comment(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="class-type" ld:level="0" type-name="job_handler" original-name="job_handlerst" custom-methods="true">
-        <ld:field ld:meta="container" ld:level="1" ld:subtype="df-linked-list" name="list" type-name="job_list_link" ld:is-container="true"><ld:item ld:level="2" ld:meta="global" type-name="job_list_link"/></ld:field>
-        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="postings" comment="entries never removed" ld:is-container="true">
-        <ld:item ld:level="2" ld:meta="pointer" ld:is-container="true">
-        <ld:item ld:meta="compound" ld:level="2">
-        <ld:field name="idx" comment="equal to position in vector" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
-        <ld:field ld:level="3" ld:meta="pointer" type-name="job" name="job" comment="bad if dead flag is set" ld:is-container="true"><ld:item ld:level="4" ld:meta="global" type-name="job"/></ld:field>
-        <ld:field ld:subtype="bitfield" name="flags" base-type="int32_t" ld:level="3" ld:meta="compound">
-        <ld:field name="dead" ld:level="4" ld:meta="number" ld:subtype="flag-bit" ld:bits="1"/>
+        <ld:field ld:level="2" ld:meta="pointer" type-name="unit" comment="List" ld:is-container="true">
+          <ld:item ld:level="3" ld:meta="global" type-name="unit"/>
         </ld:field>
-        <ld:field comment="not saved" ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
-        </ld:item>
-            </ld:item>
-            </ld:field>
-        <ld:field ld:level="1" ld:meta="static-array" count="2000" ld:is-container="true">
-        <ld:item ld:meta="compound" ld:level="1">
-        <ld:field ld:level="2" ld:meta="pointer" type-name="unit" comment="List seems to be processed index 0 first and then removal swaps last to first" ld:is-container="true"><ld:item ld:level="3" ld:meta="global" type-name="unit"/></ld:field>
-        <ld:field comment="Seems to have very few bits set in lower half, (not copied with the pointer?)" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
-        <ld:field comment="Seems to have many bits set in lower half, (not copied with the pointer?)" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
-        </ld:item>
-        </ld:field>
-        <ld:field comment="next slot" ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+        <ld:field ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
         </ld:global-type>
         </ld:data-definition>
         """
         PROTO = """
-        message job_list_link {
-          optional int32 next_id = 1;
+        message job_handler {
+          /* List */
+          optional unit anon_1 = 1;
+          required int32 anon_2 = 2;
         }
         """
         CPP = """
-        void DFProto::describe_job_list_link(dfproto::job_list_link* proto, df::job_list_link* dfhack) {
-          proto->set_next_id(dfhack->next->id);
+        void DFProto::describe_job_handler(dfproto::job_handler* proto, df::job_handler* dfhack) {
+          describe_unit(proto->mutable_anon_1(), dfhack->anon_1);
+          proto->set_anon_2(dfhack->anon_2);
         }
         """
-        IMPORTS = []
-        DFPROTO_IMPORTS = ['job_list_link']
-        self.sut_cpp.add_exception_index('job_list_link', 'id')
-        self.sut_proto.add_exception_index('job_list_link', 'id')
+        IMPORTS = ['unit']
+        DFPROTO_IMPORTS = ['unit']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
-
-   
