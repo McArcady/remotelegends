@@ -259,7 +259,7 @@ class TestRenderField(unittest.TestCase):
         IMPORTS = ['coord']
         DFPROTO_IMPORTS = ['coord']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
-        
+    
     def test_render_field_container_of_anon_compounds(self):
         XML = """
         <ld:data-definition xmlns:ld="ns">
@@ -792,6 +792,39 @@ class TestRenderField(unittest.TestCase):
         # FIXME
         CPP = """
         /* failed to find a discriminator for union T_abuse_data */
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
+
+
+    #
+    # non-regression tests from bug fixing
+    #
+
+    def test_bugfix_anon_container_of_anon_compounds(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="static-array" count="2000" ld:is-container="true">
+          <ld:item ld:meta="compound" ld:level="1">
+            <ld:field ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message T_anon_1 {
+          required int32 anon_1 = 1;
+        }
+        repeated T_anon_1 anon_1 = 1;
+        """
+        CPP = """
+        auto describe_T_anon_1 = [](dfproto::mytype_T_anon_1* proto, df::mytype::T_anon_1* dfhack) {
+          proto->set_anon_1(dfhack->anon_1);
+        };
+        for (size_t i=0; i<2000; i++) {
+          describe_T_anon_1(proto->add_anon_1(), &dfhack->anon_1[i]);
+        }
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []

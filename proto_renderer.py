@@ -248,7 +248,7 @@ class ProtoRenderer(AbstractRenderer):
             else:
                 # local anon compound
                 tname = 'T_'+ctx.name
-                out  = self.render_type_struct(xml[0], tname, ctx)
+                out  = self.copy().render_type_struct(xml[0], tname, ctx)
                 out += self._render_line(xml[0], tname, ctx.set_keyword('repeated'))
             return out
         elif self.is_primitive_type(tname):
