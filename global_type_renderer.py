@@ -58,7 +58,8 @@ class GlobalTypeRenderer:
         out += 'syntax = "proto%d";\n' % (self.version)
         out += 'option optimize_for = LITE_RUNTIME;\n'
         for imp in rdr.imports:
-            out += 'import \"%s.proto\";\n' % (imp)
+            if imp != self.get_type_name():
+                out += 'import \"%s.proto\";\n' % (imp)
         out += '\n' + typout
         return out
 

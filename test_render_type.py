@@ -570,7 +570,7 @@ class TestRenderType(unittest.TestCase):
         }
         """
         IMPORTS = []
-        DFPROTO_IMPORTS = []
+        DFPROTO_IMPORTS = ['job_list_link']
         self.sut_cpp.add_exception_index('job_list_link', 'id')
         self.sut_proto.add_exception_index('job_list_link', 'id')
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
