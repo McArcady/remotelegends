@@ -7,7 +7,7 @@ from abstract_renderer import AbstractRenderer
 
 class Context:
     
-    def __init__(self, names=None, ident=None):
+    def __init__(self, value=None, names=None, ident=None):
         self.names = names
         self.ident = ident or 0
         self.deref = False
@@ -46,6 +46,9 @@ class CppRenderer(AbstractRenderer):
 
     def outer_dfhack_tname(self):
         return '::'.join(self.outer_types)
+
+    def create_context(self):
+        return Context()
 
     def copy(self):
         mycopy = CppRenderer(self.ns, self.proto_ns, self.cpp_ns)
@@ -112,7 +115,7 @@ class CppRenderer(AbstractRenderer):
             '[i]' if array else ''
         )
 
-    def _convert_compound(self, tname, names, deref=True, array=False):
+    def _convert_field_compound(self, tname, names, deref=True, array=False):
         return 'describe_%s(proto->%s_%s(), %sdfhack->%s%s);\n' % (
             tname,
             'add' if array else 'mutable', names[0],
@@ -139,7 +142,7 @@ class CppRenderer(AbstractRenderer):
             self.imports.add(tname)
         self.dfproto_imports.add(tname)
         self.imports.add(tname)
-        return self.ident(xml, ctx.ident) + self._convert_compound(
+        return self.ident(xml, ctx.ident) + self._convert_field_compound(
             tname, ctx.names, deref=ctx.deref
         )
 
@@ -193,7 +196,7 @@ class CppRenderer(AbstractRenderer):
                             names[0], v, '*' if deref else '', names[1], v
                         )
                 if not item_str:
-                    item_str = self._convert_compound(
+                    item_str = self._convert_field_compound(
                         tname, names, array=True
                     )
         else:
@@ -215,12 +218,12 @@ class CppRenderer(AbstractRenderer):
                     if len(xml[0]) == 0:
                         return self.ident(xml) + '/* ignored empty container %s */\n' % (names[0])
                     out += self._convert_anon_compound(xml[0][0], names[0])
-                    item_str = self._convert_compound(
+                    item_str = self._convert_field_compound(
                         'T_'+names[0], names, array=True
                     )                    
                 elif meta == 'compound':
                     out += self._convert_anon_compound(xml[0], names[0])
-                    item_str = self._convert_compound(
+                    item_str = self._convert_field_compound(
                         'T_'+names[0], names, array=True, deref=False
                     )
                 elif meta=='container' or meta=='static-array':
@@ -231,7 +234,7 @@ class CppRenderer(AbstractRenderer):
                         return self.render_field(xml[0], Context(names[0]))
                     self.imports.add(tname)
                     self.dfproto_imports.add(tname)
-                    item_str = self._convert_compound(
+                    item_str = self._convert_field_compound(
                         tname, names, array=True, deref=False
                     )
         
@@ -250,29 +253,23 @@ class CppRenderer(AbstractRenderer):
     
     # structs
 
-    def render_type_struct(self, xml, tname=None):
-        if not tname:
-            tname = xml.get('type-name')
-        out = self.ident(xml) + 'void %s::describe_%s(%s::%s* proto, df::%s* dfhack) {\n' % (
-            self.cpp_ns, tname, self.proto_ns, tname, tname
-        )
-        value = 1
-        parent = xml.get('inherits-from')
-        if parent:
-            out += self.ident(xml) + '  describe_%s(proto->mutable_parent(), dfhack);\n' % ( parent )
-            self.dfproto_imports.add(parent)
-            value += 1
-        for item in xml.findall(f'{self.ns}field'):
-            name = self.get_name(item)[0]
-            tname = item.get(f'{self.ns}subtype') or item.get('type-name')
-            field = self.render_field(item)
-            if field.lstrip().startswith('/*'):
-                continue
-            out += field
-            value += 1
-        out += '}\n'
-        return out
+    def _render_struct_header(self, xml, tname, ctx):
+        return self.ident(xml) + 'void %s::describe_%s(%s::%s* proto, df::%s* dfhack) {\n' % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
+    
+    def _render_struct_footer(self, xml, ctx):
+        return '}\n'
+    
+    def _render_struct_parent(self, xml, parent, ctx):
+        self.dfproto_imports.add(parent)
+        return self.ident(xml) + '  describe_%s(proto->mutable_parent(), dfhack);\n' % ( parent )
 
+    def _render_struct_field(self, item, value, ctx):
+        field = self.render_field(item, Context(value, ident=ctx.ident))
+        if field.lstrip().startswith('/*'):
+            field = ''
+            value += 1
+        return field, value
+    
     def _convert_anon_compound(self, xml, name=None):
         if not name:
             name = self.get_name(xml)[0]
@@ -284,8 +281,6 @@ class CppRenderer(AbstractRenderer):
             tname, rdr.outer_proto_tname(), rdr.outer_dfhack_tname()
         )
         for item in xml.findall(f'{self.ns}field'):
-            name = self.get_name(item)[0]
-            tname = item.get(f'{self.ns}subtype') or item.get('type-name')
             out += rdr.render_field(item)
         out += self.ident(xml) + '};\n'
         return out
@@ -300,15 +295,13 @@ class CppRenderer(AbstractRenderer):
         anon = xml.get(f'{self.ns}anon-compound')
         union = xml.get('is-union')
         if union == 'true':
-            if anon == 'true':
-                return self.render_union(xml, 'anon')
-            return self.render_union(xml)
+            return self.render_field_union(xml)
 
         if not ctx.names:
             ctx.names = self.get_name(xml)
         tname = self.get_typedef_name(xml, ctx.names[0])
         out  = self.copy()._convert_anon_compound(xml, ctx.names[0])
-        out += self.ident(xml) + self._convert_compound(
+        out += self.ident(xml) + self._convert_field_compound(
             tname, ctx.names, ctx.deref
         )
         return out
@@ -316,7 +309,7 @@ class CppRenderer(AbstractRenderer):
 
     # unions
 
-    def render_union(self, xml, tname=None):
+    def render_field_union(self, xml):
         name = self.get_name(xml)
         if self.last_enum_descr == None:
             return '/* failed to find a discriminator for union %s */\n' % (self.get_typedef_name(xml, name[0]))

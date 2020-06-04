@@ -111,6 +111,26 @@ class AbstractRenderer:
             return line + '/* ' + comment + ' */\n'
         return line + '\n'
 
+    
+    # struct
+        
+    def render_type_struct(self, xml, tname=None, ctx=None):
+        if not ctx:
+            ctx = self.create_context()
+        if not tname:
+            tname = xml.get('type-name')
+        out = self._render_struct_header(xml, tname, ctx)
+        value = 1
+        parent = xml.get('inherits-from')
+        if parent:
+            out += self._render_struct_parent(xml, parent, ctx)
+            value += 1        
+        for item in xml.findall(f'{self.ns}field'):
+            field, value = self._render_struct_field(item, value, ctx)
+            out += field
+        out += self._render_struct_footer(xml, ctx)
+        return out
+
 
     # main renderer
 

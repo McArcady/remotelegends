@@ -45,6 +45,9 @@ class ProtoRenderer(AbstractRenderer):
         # protobuf version (2|3)
         self.version = 2
 
+    def create_context(self):
+        return Context()
+
     def copy(self):
         copy = ProtoRenderer(self.ns, proto_ns=self.proto_ns)
         AbstractRenderer.copy(self, copy)
@@ -262,28 +265,27 @@ class ProtoRenderer(AbstractRenderer):
     
     # structs
 
-    def render_type_struct(self, xml, tname=None, ctx=None):
-        if not ctx:
-            ctx = Context()
-        if not tname:
-            tname = xml.get('type-name')
-        out  = self.ident(xml, ctx.ident) + 'message ' + tname + ' {\n'
-        parent = xml.get('inherits-from')
-        value = 1
-        if parent:
-            out += self.ident(xml, ctx.ident+1) + '/* parent type */\n'
-            out += self._render_line(xml, parent, ctx.set_name('parent').inc_ident())
-            self.imports.add(parent)
-            value += 1        
-        for item in xml.findall(f'{self.ns}field'):
-            field = self.render_field(item, Context(value, ident=ctx.ident))
-            out += field
-            if item.get('is-union'):
-                value += len(item)
-            else:
-                value += 1
-        out += self.ident(xml, ctx.ident) + '}\n'
+    def _render_struct_header(self, xml, tname, ctx):
+        out = self.ident(xml, ctx.ident) + 'message ' + tname + ' {\n'
         return out
+    
+    def _render_struct_footer(self, xml, ctx):
+        out = self.ident(xml, ctx.ident) + '}\n'
+        return out
+    
+    def _render_struct_parent(self, xml, parent, ctx):
+        out  = self.ident(xml, ctx.ident+1) + '/* parent type */\n'
+        out += self._render_line(xml, parent, ctx.set_name('parent').inc_ident())
+        self.imports.add(parent)
+        return out
+
+    def _render_struct_field(self, item, value, ctx):
+        field = self.render_field(item, Context(value, ident=ctx.ident))
+        if item.get('is-union'):
+            value += len(item)
+        else:
+            value += 1
+        return field, value
 
     def render_field_compound(self, xml, ctx):
         subtype = xml.get(f'{self.ns}subtype')

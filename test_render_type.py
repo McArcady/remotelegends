@@ -1,6 +1,5 @@
 #!/bin/python3
 
-import os
 import unittest
 from lxml import etree
 
@@ -45,7 +44,8 @@ class TestRenderType(unittest.TestCase):
     def check_rendering(self, XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS):
         xml = etree.fromstring(XML)[0]
         out = self.sut_proto.render_type(xml)
-        self.assertStructEqual(out, PROTO)
+        if len(PROTO):
+            self.assertStructEqual(out, PROTO)
         self.assertEqual(sorted(list(self.sut_proto.imports)), sorted(IMPORTS))
         self.proto_output += out
         if CPP:
@@ -570,7 +570,7 @@ class TestRenderType(unittest.TestCase):
         }
         """
         IMPORTS = []
-        DFPROTO_IMPORTS = ['job_list_link']
+        DFPROTO_IMPORTS = []
         self.sut_cpp.add_exception_index('job_list_link', 'id')
         self.sut_proto.add_exception_index('job_list_link', 'id')
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
@@ -606,4 +606,56 @@ class TestRenderType(unittest.TestCase):
         """
         IMPORTS = ['unit']
         DFPROTO_IMPORTS = ['unit']
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+
+    def test_bugfix_multiple_anon_compounds_and_fields(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="job_handler" original-name="job_handlerst" custom-methods="true">
+        <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" ld:is-container="true">
+          <ld:item ld:level="2" ld:meta="pointer" ld:is-container="true">
+            <ld:item ld:meta="compound" ld:level="2">
+              <ld:field ld:level="3" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+            </ld:item>
+          </ld:item>
+        </ld:field>
+        <ld:field ld:level="1" ld:meta="static-array" count="2000" ld:is-container="true">
+          <ld:item ld:meta="compound" ld:level="1">
+            <ld:field ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          </ld:item>
+        </ld:field>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message job_handler {
+          message T_anon_1 {
+            required int32 anon_1 = 1;
+          }
+          repeated T_anon_1 anon_1 = 1; 
+          message T_anon_2 {
+            required int32 anon_1 = 1;
+          }
+          repeated T_anon_2 anon_2 = 2;
+        }
+        """
+        CPP = """
+        void DFProto::describe_job_handler(dfproto::job_handler* proto, df::job_handler* dfhack) {
+          auto describe_T_anon_1 = [](dfproto::job_handler_T_anon_1* proto, df::job_handler::T_anon_1* dfhack) {
+            proto->set_anon_1(dfhack->anon_1);
+          };
+          for (size_t i=0; i<dfhack->anon_1.size(); i++) {
+            describe_T_anon_1(proto->add_anon_1(), dfhack->anon_1[i]);
+          }
+          auto describe_T_anon_2 = [](dfproto::job_handler_T_anon_2* proto, df::job_handler::T_anon_2* dfhack) {
+            proto->set_anon_1(dfhack->anon_1);
+          };
+          for (size_t i=0; i<2000; i++) {
+            describe_T_anon_2(proto->add_anon_2(), &dfhack->anon_2[i]);
+          }
+        }
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
