@@ -64,10 +64,14 @@ class CppRenderer(AbstractRenderer):
     def render_type_enum(self, xml, tname=None):
         raise TypeError('enum type does not need a describe function')
 
-    def _convert_enum(self, tname, names, array=False):
-        return 'proto->%s_%s(static_cast<dfproto::%s>(dfhack->%s%s));\n' % (
+    def _convert_enum(self, tname, names, array=False, is_ptr=False):
+        if is_ptr:
+            sfield = '(*dfhack->%s)' % (names[1])
+        else:
+            sfield = 'dfhack->%s' % (names[1])
+        return 'proto->%s_%s(static_cast<dfproto::%s>(%s%s));\n' % (
             'add' if array else 'set', names[0],
-            tname, names[1], '[i]' if array else ''
+            tname, sfield, '[i]' if array else ''
         )
 
     def render_field_enum(self, xml):
@@ -108,10 +112,14 @@ class CppRenderer(AbstractRenderer):
             tname = 'bytes'
         return tname
 
-    def _convert_simple(self, names, deref=False, array=False):
-        return 'proto->%s_%s(%sdfhack->%s%s);\n' % (
+    def _convert_simple(self, names, deref=False, array=False, is_ptr=False):
+        if is_ptr:
+            sfield = '(*dfhack->%s)' % (names[1])
+        else:
+            sfield = 'dfhack->%s' % (names[1])
+        return 'proto->%s_%s(%s%s%s);\n' % (
             'add' if array else 'set', names[0],
-            '*' if deref else '', names[1],
+            '*' if deref else '', sfield,
             '[i]' if array else ''
         )
 
@@ -175,6 +183,8 @@ class CppRenderer(AbstractRenderer):
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'df-flagarray':
             return self.ident(xml) + '/* ignored flagarray container %s */\n' % (names[0])
+        if subtype == 'stl-bit-vector':
+            return self.ident(xml) + '/* ignored stl-bit-vector container %s */\n' % (names[0])
         if subtype == 'df-linked-list':
             return self.render_field_global(xml, ctx)
         
@@ -192,6 +202,7 @@ class CppRenderer(AbstractRenderer):
                 self.dfproto_imports.add(tname)
                 for k,v in iter(self.exceptions_index):
                     if k == tname:
+                        # FIXME: handle ctx.deref
                         item_str = 'proto->add_%s_%s(%sdfhack->%s[i]->%s);' % (
                             names[0], v, '*' if deref else '', names[1], v
                         )
@@ -210,9 +221,9 @@ class CppRenderer(AbstractRenderer):
                     self.imports.add(tname)
                 else:
                     tname = self.outer_proto_tname() + '_T_' + names[0]
-                item_str = self._convert_enum(tname, names, array=True)
+                item_str = self._convert_enum(tname, names, array=True, is_ptr=ctx.deref)
             elif self.is_primitive_type(subtype):
-                item_str = self._convert_simple(names, array=True)
+                item_str = self._convert_simple(names, array=True, is_ptr=ctx.deref)
             else:
                 if meta == 'pointer':
                     if len(xml[0]) == 0:
@@ -240,11 +251,11 @@ class CppRenderer(AbstractRenderer):
         
         if not item_str:
             item_str = self._convert_simple(
-                names, deref, array=True
+                names, deref, array=True, is_ptr=ctx.deref
             )
         count = xml.get('count')
         if not count:
-            count = 'dfhack->%s.size()' % (names[1])
+            count = 'dfhack->%s%ssize()' % (names[1], '->' if ctx.deref else '.')
         out += self.ident(xml) + 'for (size_t i=0; i<%s; i++) {\n' % (count)
         out += self.ident(xml) + '  %s' % (item_str)
         out += self.ident(xml) + '}\n'

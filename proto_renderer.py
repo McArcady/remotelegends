@@ -321,7 +321,7 @@ class ProtoRenderer(AbstractRenderer):
             meta = item.get(f'{self.ns}meta')
             if meta == 'compound':
                 itname = self.get_type_name(item)
-                predecl += self.render_type_struct(item, tname=itname, ctx=ctx)
+                predecl += self.copy().render_type_struct(item, tname=itname, ctx=ctx)
                 fields += self._render_line(item, itname, ctx)
             else:
                 fields += self.render_field_simple(item, ctx)

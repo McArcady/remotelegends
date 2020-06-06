@@ -667,10 +667,32 @@ class TestRenderField(unittest.TestCase):
         """
         CPP =  """
         for (size_t i=0; i<50; i++) {
-          proto->add_temporary_trait_changes(dfhack->temporary_trait_changes[i]);
+          proto->add_temporary_trait_changes((*dfhack->temporary_trait_changes)[i]);
         }
         """
         IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
+    def test_render_field_pointer_to_vector(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field ld:level="1" ld:meta="pointer" name="spheres" ld:is-container="true">
+            <ld:item ld:meta="container" ld:level="2" ld:subtype="stl-vector" ld:is-container="true">
+                <ld:item ld:subtype="enum" base-type="int16_t" type-name="sphere_type" ld:level="3" ld:meta="global"/>
+            </ld:item>
+        </ld:field>
+        </ld:data-definition>
+        """
+        PROTO = """
+        repeated sphere_type spheres = 1;
+        """
+        CPP =  """
+        for (size_t i=0; i<dfhack->spheres->size(); i++) {
+          proto->add_spheres(static_cast<dfproto::sphere_type>((*dfhack->spheres)[i]));
+        }
+        """
+        IMPORTS = ['sphere_type']
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
