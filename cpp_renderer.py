@@ -216,7 +216,7 @@ class CppRenderer(AbstractRenderer):
             tname = xml[0].get('type-name')
             if subtype == 'bitfield':
                 item_str = self._convert_bitfield(names, array=True)
-            elif subtype == 'enum' or tname and tname.endswith('_type'):
+            elif subtype == 'enum' or tname and tname.endswith('_type') or tname in self.exceptions_enum:
                 if tname:
                     self.imports.add(tname)
                 else:

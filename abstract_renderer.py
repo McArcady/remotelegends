@@ -16,11 +16,13 @@ class AbstractRenderer:
         self.exceptions_rename = []
         self.exceptions_ignore = []
         self.exceptions_index = []
+        self.exceptions_enum = []
 
     def copy(self, target):
         target.exceptions_ignore = self.exceptions_ignore
         target.exceptions_rename = self.exceptions_rename
         target.exceptions_index = self.exceptions_index
+        target.exceptions_enum = self.exceptions_enum
 
     TYPES = defaultdict(lambda: None, {
         k:v for k,v in {
@@ -61,6 +63,10 @@ class AbstractRenderer:
 
     def add_exception_index(self, tname, field):
         self.exceptions_index.append((tname, field))
+        return self
+
+    def add_exception_enum(self, tname):
+        self.exceptions_enum.append(tname)
         return self
 
     def ident(self, xml, extra_ident=0):

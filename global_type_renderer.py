@@ -11,6 +11,7 @@ class GlobalTypeRenderer:
         self.exceptions_rename = []
         self.exceptions_ignore = []
         self.exceptions_index = []
+        self.exceptions_enum = []
         self.xml = xml
         assert self.xml.tag == '{%s}global-type' % (self.ns)
 
@@ -30,6 +31,8 @@ class GlobalTypeRenderer:
                     self.exceptions_index.append(tokens)
                 elif tokens[0] == 'ignore':
                     self.exceptions_ignore.append(tokens)
+                elif tokens[0] == 'enum':
+                    self.exceptions_enum.append(tokens)
         
     
     def get_type_name(self):
@@ -71,6 +74,8 @@ class GlobalTypeRenderer:
             rdr.add_exception_index(tokens[1], tokens[2])
         for tokens in self.exceptions_ignore:
             rdr.add_exception_ignore(tokens[1])
+        for tokens in self.exceptions_enum:
+            rdr.add_exception_enum(tokens[1])
         typout = rdr.render_type(self.xml)
         out  = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
         out += '#include \"%s.h\"\n' % (self.get_type_name())

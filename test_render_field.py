@@ -1,8 +1,6 @@
 #!/bin/python3
 
-import os
 import unittest
-import subprocess
 from lxml import etree
 
 from cpp_renderer import CppRenderer
