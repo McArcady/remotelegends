@@ -117,14 +117,22 @@ class CppRenderer(AbstractRenderer):
             sfield = '(*dfhack->%s)' % (names[1])
         else:
             sfield = 'dfhack->%s' % (names[1])
-        return 'proto->%s_%s(%s%s%s);\n' % (
+        if deref:
+            out = 'if (dfhack->%s%s != NULL) ' % (names[1], '[i]' if array else '')
+        else:
+            out = ''
+        return out + 'proto->%s_%s(%s%s%s);\n' % (
             'add' if array else 'set', names[0],
             '*' if deref else '', sfield,
             '[i]' if array else ''
         )
 
     def _convert_field_compound(self, tname, names, deref=True, array=False):
-        return 'describe_%s(proto->%s_%s(), %sdfhack->%s%s);\n' % (
+        if deref:
+            out = 'if (dfhack->%s%s != NULL) ' % (names[1], '[i]' if array else '')
+        else:
+            out = ''
+        return out + 'describe_%s(proto->%s_%s(), %sdfhack->%s%s);\n' % (
             tname,
             'add' if array else 'mutable', names[0],
             '' if deref else '&',
@@ -169,7 +177,13 @@ class CppRenderer(AbstractRenderer):
                 self.dfproto_imports.add(tname)
                 return self._convert_simple( (ctx.names[0]+'_'+v, ctx.names[1]+'->'+v) )
         if len(xml):
-            return self.render_field(xml[0], ctx.set_deref(True).dec_ident())
+            meta = xml[0].get(f'{self.ns}meta')
+            if meta=='static-array' or meta=='container':
+                # pointer to container
+                out = 'if (dfhack->%s != NULL) ' % (ctx.names[1])
+            else:
+                out = ''            
+            return out + self.render_field(xml[0], ctx.set_deref(True).dec_ident())
         return self.ident(xml) + '/* ignored pointer to unknown type */\n'
 
     def render_field_container(self, xml, ctx):
