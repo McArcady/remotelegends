@@ -22,7 +22,7 @@ COLOR_ENDC = '\033[0m'
 def main():
     
     # parse args
-    parser = argparse.ArgumentParser(description='Generate protobuf and conversion code  from dfhack structures.')
+    parser = argparse.ArgumentParser(description='Generate protobuf and conversion code from dfhack structures.')
     parser.add_argument('input', metavar='DIR|FILE', type=str,
                         help='input directory or xml file (default=.)')
     parser.add_argument('--proto_out', metavar='PROTODIR', type=str,

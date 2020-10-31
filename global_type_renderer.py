@@ -12,6 +12,7 @@ class GlobalTypeRenderer:
         self.exceptions_ignore = []
         self.exceptions_index = []
         self.exceptions_enum = []
+        self.exceptions_depends = []
         self.xml = xml
         assert self.xml.tag == '{%s}global-type' % (self.ns)
 
@@ -33,7 +34,8 @@ class GlobalTypeRenderer:
                     self.exceptions_ignore.append(tokens)
                 elif tokens[0] == 'enum':
                     self.exceptions_enum.append(tokens)
-        
+                elif tokens[0] == 'depends':
+                    self.exceptions_depends.append((tokens[1], tokens[2]))
     
     def get_type_name(self):
         tname = self.xml.get('type-name')
@@ -78,10 +80,16 @@ class GlobalTypeRenderer:
             rdr.add_exception_enum(tokens[1])
         typout = rdr.render_type(self.xml)
         out  = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
+        # this type may have hidden dependencies
+        for k,v in self.exceptions_depends:
+            if k == self.get_type_name():
+                out += '#include \"%s.h\"\n' % (v)
         out += '#include \"%s.h\"\n' % (self.get_type_name())
+        # protobuf and dfhack dependencies
         for imp in rdr.imports:
             out += '#include \"df/%s.h\"\n' % (imp)
             out += '#include \"%s.pb.h\"\n' % (imp)
+        # conversion code for other types
         for imp in rdr.dfproto_imports:
             out += '#include \"%s.h\"\n' % (imp)
         out += '\n' + typout
