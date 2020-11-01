@@ -153,16 +153,23 @@ class AbstractRenderer:
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_field_impl(self, xml, ctx):
-        for k in self.exceptions_ignore:
-            found = xml.getroottree().xpath(k, namespaces={
-                'ld': self.ns[1:-1],
-                're': 'http://exslt.org/regular-expressions'
-            })
-            if found and xml in found:
-                # ignore this field
-                return self.ident(xml) + '/* ignored field %s */\n' % (
-                    AbstractRenderer.get_name(self, xml)[0]
-                )
+        ignore = False
+        name = xml.get('name')
+        export = xml.get('export')
+        if (name and name.startswith('unk_')) or (export and export == 'false'):
+            ignore = True
+        else:
+            for k in self.exceptions_ignore:
+                found = xml.getroottree().xpath(k, namespaces={
+                    'ld': self.ns[1:-1],
+                    're': 'http://exslt.org/regular-expressions'
+                })
+                if found and xml in found:
+                    ignore = True
+                    break
+        # ignore this field
+        if ignore:
+            return self.ident(xml) + '/* ignored field %s */\n' % (name or 'anon')
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
             return self.render_field_compound(xml, ctx)

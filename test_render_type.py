@@ -145,20 +145,20 @@ class TestRenderType(unittest.TestCase):
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation1">
           <ld:field name="conv_title" ld:level="1" ld:meta="primitive" ld:subtype="stl-string"/>
-          <ld:field name="unk_30" ref-target="unit" ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
+          <ld:field name="num_30" ref-target="unit" ld:level="1" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
         </ld:global-type>
         </ld:data-definition>
         """
         PROTO = """
         message conversation1 {
           required string conv_title = 1;
-          required int32 unk_30 = 2;
+          required int32 num_30 = 2;
         }
         """
         CPP = """
         void DFProto::describe_conversation1(dfproto::conversation1* proto, df::conversation1* dfhack) {
           proto->set_conv_title(dfhack->conv_title);
-          proto->set_unk_30(dfhack->unk_30);
+          proto->set_num_30(dfhack->num_30);
         }
         """
         IMPORTS = []
@@ -304,7 +304,7 @@ class TestRenderType(unittest.TestCase):
         XML = """
         <ld:data-definition xmlns:ld="ns">
         <ld:global-type ld:meta="struct-type" ld:level="0" type-name="conversation">
-          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="unk_54" pointer-type="nemesis_record" ld:is-container="true">
+          <ld:field ld:meta="container" ld:level="1" ld:subtype="stl-vector" name="nem_54" pointer-type="nemesis_record" ld:is-container="true">
             <ld:item ld:meta="pointer" ld:is-container="true" ld:level="2" type-name="nemesis_record">
               <ld:item ld:level="3" ld:meta="global" type-name="nemesis_record"/>
           </ld:item></ld:field>
@@ -313,13 +313,13 @@ class TestRenderType(unittest.TestCase):
         """
         PROTO = """
         message conversation {
-          repeated nemesis_record unk_54 = 1;
+          repeated nemesis_record nem_54 = 1;
         }
         """
         CPP = """
         void DFProto::describe_conversation(dfproto::conversation* proto, df::conversation* dfhack) {
-	  for (size_t i=0; i<dfhack->unk_54.size(); i++) {
-	    if (dfhack->unk_54[i] != NULL) describe_nemesis_record(proto->add_unk_54(), dfhack->unk_54[i]);
+	  for (size_t i=0; i<dfhack->nem_54.size(); i++) {
+	    if (dfhack->nem_54[i] != NULL) describe_nemesis_record(proto->add_nem_54(), dfhack->nem_54[i]);
 	  }
         }
         """
