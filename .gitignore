@@ -1,6 +1,9 @@
 *.xml
 codegen
-*.pb
+*.pb.*
 *.pyc
-*.proto
-*.pb
+src
+include
+proto
+node_modules
+package-lock.json
