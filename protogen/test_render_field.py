@@ -819,6 +819,28 @@ class TestRenderField(unittest.TestCase):
 
 
     #
+    # conversion
+    #
+
+    def test_render_field_with_converted_type(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:field name="name" type-name="language_name" export-as="string" ld:level="1" ld:meta="global"/>
+        </ld:data-definition>
+        """
+        PROTO = """
+        required string name = 1;
+        """
+        CPP = """
+        convert_language_name_to_string(&dfhack->name, proto->mutable_name());
+        """
+        IMPORTS = []
+        DFPROTO_IMPORTS = ['conversion']
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
+
+
+        
+    #
     # non-regression tests from bug fixing
     #
 

@@ -167,9 +167,13 @@ class AbstractRenderer:
                 if found and xml in found:
                     ignore = True
                     break
-        # ignore this field
         if ignore:
+            # ignore this field
             return self.ident(xml) + '/* ignored field %s */\n' % (name or 'anon')
+        export_as = xml.get('export-as')
+        if export_as:
+            # convert type
+            return self.render_field_conversion(xml, ctx)
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
             return self.render_field_compound(xml, ctx)

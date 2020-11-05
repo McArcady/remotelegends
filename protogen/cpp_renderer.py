@@ -350,6 +350,19 @@ class CppRenderer(AbstractRenderer):
         out += '      proto->clear_%s();\n' % (name[0])
         out += '  }\n'
         return out
+
+
+    # conversion of type
+    
+    def render_field_conversion(self, xml, ctx=None):
+        name = self.get_name(xml)
+        tname = self.get_typedef_name(xml, name)
+        new_tname = xml.get('export-as')
+        assert new_tname
+        self.dfproto_imports.add('conversion')
+        return self.ident(xml) + 'convert_%s_to_%s(&dfhack->%s, proto->mutable_%s());\n' % (
+            tname, new_tname, name[0], name[0]
+        )
     
 
     # main renderer
@@ -368,3 +381,4 @@ class CppRenderer(AbstractRenderer):
         return 'void describe_%s(%s::%s* proto, df::%s* dfhack);' % (
             tname, self.proto_ns, tname, tname
         )
+    

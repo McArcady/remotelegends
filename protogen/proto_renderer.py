@@ -190,6 +190,12 @@ class ProtoRenderer(AbstractRenderer):
         return self._render_line(xml, tname, ctx)
 
 
+    # converted type
+    
+    def render_field_conversion(self, xml, ctx):
+        return self._render_line(xml, xml.get('export-as'), ctx)
+        
+    
     # pointers and containers
     
     def render_field_pointer(self, xml, ctx):
