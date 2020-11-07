@@ -1,0 +1,32 @@
+package RemoteLegends;
+
+option optimize_for = LITE_RUNTIME;
+
+// Plugin: RemoteLegends
+
+import "world_landmass.proto";
+
+// RPC GetWorldLandmassList : ListRequest -> WorldLandmassList
+
+message WorldLandmassList {
+    repeated dfproto.world_landmass landmass_list = 1;
+}
+
+message SingleBool {
+    optional bool Value = 1;
+}
+
+message VersionInfo {
+    optional string dwarf_fortress_version = 1;
+    optional string dfhack_version = 2;
+    optional string remote_legends_version = 3;
+}
+
+message MyListRequest {
+    optional int32 list_start = 1;
+    optional int32 list_end = 2;
+}
+
+message IdRequest {
+    required int32 id = 1;
+}

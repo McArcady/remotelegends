@@ -1,9 +1,7 @@
-*.xml
 codegen
 *.pb.*
 *.pyc
+*.tmp
 src
-include
-proto
 node_modules
 package-lock.json

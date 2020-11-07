@@ -1,4 +1,4 @@
-project(grpc LANGUAGES CXX)
+project(remotelegends LANGUAGES CXX)
 
 cmake_minimum_required(VERSION 3.13)
 if(COMMAND cmake_policy)
@@ -7,62 +7,63 @@ endif(COMMAND cmake_policy)
 
 
 #
-# Protobuf & gRPC
-#
-set(protobuf_MODULE_COMPATIBLE TRUE)
-find_package(Protobuf CONFIG REQUIRED)
-message(STATUS "Using protobuf ${Protobuf_VERSION}")
-set(_PROTOBUF_LIBPROTOBUF protobuf::libprotobuf)
-set(_REFLECTION gRPC::grpc++_reflection)
-set(_PROTOBUF_PROTOC $<TARGET_FILE:protobuf::protoc>)
-
-find_package(gRPC CONFIG REQUIRED)
-message(STATUS "Using gRPC ${gRPC_VERSION}")
-set(_GRPC_GRPCPP gRPC::grpc++)
-set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_cpp_plugin>)
-
-
-#
 # constants
 #
-set(FILTER df.*.xml)
-set(DFHACK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../dfhack)
-set(XML_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../df-structures)
+set(FILTER        "df.*.xml")
+set(DFHACK_DIR    "/home/francois/workspace/df/dfhack")
+set(XML_DIR       "/home/francois/workspace/df/df-structures")
+set(XML_PATCH_DIR "${CMAKE_CURRENT_SOURCE_DIR}/xml")
 
 
 #
 # compile and link options
 #
 include_directories(${Protobuf_INCLUDE_DIRS})
-#include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/proto)
 include_directories(${DFHACK_DIR}/library/include)
 
 # fast-compilation & debugging
-add_compile_options("-O0")
+add_compile_options(-fPIC)
 add_definitions(-DLINUX_BUILD)
 
 # target to generate all proto files and conversion code (needed since pb dependencies cannot be handled precisely)
 add_custom_target(xml_all)
-add_custom_target(proto_all)
+#add_custom_target(proto_all)
 add_custom_target(convert_all)
 
 # all cpp files
-set(all_source_files "")
+set(PROJECT_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/remotelegends.cpp")
 set(all_libraries "")
-
+set(PLUGIN_PROTOS "${CMAKE_CURRENT_SOURCE_DIR}/proto/RemoteLegends.proto")
+set(PLUGIN_PROTO_SRCS "")
 
 #
 # identify global types dependencies
 #
-file(GLOB structures ${XML_DIR}/${FILTER})
-foreach (xml_file ${structures})
-  get_filename_component(filter ${xml_file} NAME)
+file(GLOB structures ${XML_PATCH_DIR}/${FILTER})
+foreach (diff_file ${structures})
+
+  get_filename_component(filter ${diff_file} NAME)
+  if (NOT EXISTS "${XML_DIR}/${filter}")
+	continue()
+  endif()
+  
+  # patch dfhack structures with our filters
+  set(xml_file "${XML_DIR}/${filter}")
+  set(tmp_xml_file "${XML_PATCH_DIR}/${filter}.tmp")
+  add_custom_command(
+    OUTPUT ${tmp_xml_file}
+	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/merge.py
+	${xml_file} "${XML_PATCH_DIR}/${filter}" > ${tmp_xml_file}
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/protogen/merge.py
+    COMMENT "Patching xml structure ${filter}"
+    DEPENDS ${xml_file}
+  )  
 
   # identify types in each xml file of df-structures  
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/list.py
-	${XML_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/proto/
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
+	${XML_PATCH_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/proto/
 	--type proto
 	--separator ";"
 	--filter ${filter}
@@ -75,16 +76,16 @@ foreach (xml_file ${structures})
   list(LENGTH proto_files types)
   message(STATUS "${filter}: ${types} exported types")
   
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/list.py
-	${XML_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
+	${XML_PATCH_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include
 	--type h
 	--separator ";"
 	--filter ${filter}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE header_files
   )
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/list.py
-	${XML_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
+	${XML_PATCH_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
 	--type cpp
 	--separator ";"
 	--filter ${filter}
@@ -92,21 +93,22 @@ foreach (xml_file ${structures})
     OUTPUT_VARIABLE source_files
   )
 
-  file(GLOB GENERATE_INPUT_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/*.py ${XML_DIR}/*.xslt)
-
+  file(GLOB GENERATE_INPUT_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/protogen/*.py ${XML_DIR}/*.xslt)
+  
   # generate code from the .xml
   add_custom_command(
     OUTPUT ${proto_files} ${header_files} ${source_files}
-    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen.py
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/protogen.py
     --proto_out ${CMAKE_CURRENT_SOURCE_DIR}/proto
     --cpp_out ${CMAKE_CURRENT_SOURCE_DIR}/src
     --h_out ${CMAKE_CURRENT_SOURCE_DIR}/include
   	--quiet
+	# TODO: no need for exceptions.conf ?
   	--exceptions=${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
-    ${xml_file}
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/protogen.py
-    COMMENT "Generating protobuf files and conversion code for ${filter}"
-    DEPENDS ${xml_file} ${GENERATE_INPUT_SCRIPTS} ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
+    ${tmp_xml_file}
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/protogen/protogen.py
+    COMMENT "Generating protobuf messages and conversion code for ${filter}"
+    DEPENDS ${tmp_xml_file} ${GENERATE_INPUT_SCRIPTS} ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
   )
 
   # define target for all products of this xml file
@@ -114,96 +116,42 @@ foreach (xml_file ${structures})
   string(REGEX REPLACE "\\." "_" struct_target ${struct_target})
   add_custom_target(${struct_target} DEPENDS ${proto_files} ${header_files} ${source_files})
   add_dependencies(xml_all ${struct_target})
-
-  # generate protobuf code from each .proto
-  foreach(proto_file ${proto_files})
-	string(REPLACE ".proto" ".pb.cc" proto_source "${proto_file}")
-	string(REPLACE ".proto" ".pb.h" proto_header "${proto_file}")
-	add_custom_command(
-      OUTPUT ${proto_source} ${proto_header}
-	  BYPRODUCTS ${proto_file}.d
-      COMMAND ${_PROTOBUF_PROTOC} -I=${CMAKE_CURRENT_SOURCE_DIR}/proto/
-      --cpp_out=${CMAKE_CURRENT_SOURCE_DIR}/proto/
-	  --dependency_out=${proto_file}.tmp.d
-      ${proto_file}
-	  COMMAND tail -n +2 ${proto_file}.tmp.d > ${proto_file}.d && rm ${proto_file}.tmp.d
-	  DEPFILE ${proto_file}.d
-      COMMENT "Generating protobuf code for ${proto_file}"
-      DEPENDS ${proto_file}
-	)
-    # define target for the protobuf code
-	get_filename_component(proto_prefix ${proto_file} NAME_WE)
-	add_custom_target(proto_${proto_prefix} DEPENDS ${proto_source} ${proto_header})
-	add_dependencies(proto_${proto_prefix} ${struct_target})
-	add_dependencies(proto_all proto_${proto_prefix} xml_all)
-  endforeach()
   
-  # define target for each convertible type
-  foreach(cpp_file ${source_files})
-	get_filename_component(my_target ${cpp_file} NAME)
-	string(REGEX REPLACE ".cpp" "" my_target ${my_target})
-	string(REGEX REPLACE "/" "_" my_target ${my_target})
-	string(REGEX REPLACE "\\." "_" my_target ${my_target})
-	
-	# define target for the conversion code
-	add_custom_target(convert_${my_target} DEPENDS ${cpp_file} proto_${my_target})
-    add_dependencies(convert_all convert_${my_target})
-	list(APPEND all_source_files ${cpp_file})
-
-	string(REGEX REPLACE ".cpp" ".pb.cc" pb_cc_file ${cpp_file})
-	string(REGEX REPLACE "src/" "proto/" pb_cc_file ${pb_cc_file})
-    add_library(${my_target}
-	  ${cpp_file}
-	  ${pb_cc_file}
-	)
-    add_dependencies(${my_target} convert_${my_target})
-    list(APPEND all_libraries ${my_target})
-	target_link_libraries(${my_target} ${Protobuf_LIBRARIES})
-  endforeach()
-  
+  list(APPEND PROJECT_SRCS ${source_files})
+  list(APPEND PLUGIN_PROTOS ${proto_files} )
+    
 endforeach()
 
-
-#
-# gRPC service
-#
-
-# Service proto file
-get_filename_component(hw_proto "${CMAKE_CURRENT_SOURCE_DIR}/legends_service.proto" ABSOLUTE)
-get_filename_component(hw_proto_path "${hw_proto}" PATH)
-
-# Generated sources
-set(hw_proto_srcs "${CMAKE_CURRENT_SOURCE_DIR}/proto/legends_service.pb.cc")
-set(hw_proto_hdrs "${CMAKE_CURRENT_SOURCE_DIR}/proto/legends_service.pb.h")
-set(hw_grpc_srcs "${CMAKE_CURRENT_SOURCE_DIR}/proto/legends_service.grpc.pb.cc")
-set(hw_grpc_hdrs "${CMAKE_CURRENT_SOURCE_DIR}/proto/legends_service.grpc.pb.h")
+# protobuf code from each .proto
+string(REPLACE ".proto" ".pb.cc" proto_sources "${PLUGIN_PROTOS}")
+string(REPLACE ".proto" ".pb.h" proto_headers "${PLUGIN_PROTOS}")
+set_source_files_properties(${proto_sources} ${proto_headers} PROPERTIES GENERATED TRUE)
+set_source_files_properties(${proto_headers} PROPERTIES HEADER_FILE_ONLY TRUE)
+list(APPEND PLUGIN_PROTO_SRCS ${proto_sources})
 
 add_custom_command(
-  OUTPUT "${hw_proto_srcs}" "${hw_proto_hdrs}" "${hw_grpc_srcs}" "${hw_grpc_hdrs}"
-  COMMAND ${_PROTOBUF_PROTOC}
-  -I=${CMAKE_CURRENT_SOURCE_DIR} -I=${CMAKE_CURRENT_SOURCE_DIR}/proto/
-  --grpc_out=${CMAKE_CURRENT_SOURCE_DIR}/proto/
+  OUTPUT ${PLUGIN_PROTO_SRCS}
+  COMMAND protoc-bin
+  -I=${CMAKE_CURRENT_SOURCE_DIR}/proto/
   --cpp_out=${CMAKE_CURRENT_SOURCE_DIR}/proto/
-  --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
-  "${hw_proto}"
-  COMMENT "Generating grpc service"
-  DEPENDS "${hw_proto}"
-  )
+  ${PLUGIN_PROTOS}
+  COMMENT "Generating protobuf code for ${PLUGIN_PROTOS}"
+  DEPENDS protoc-bin ${PLUGIN_PROTOS}
+)
+add_custom_target(proto_all DEPENDS ${PLUGIN_PROTO_SRCS})
 
-message(STATUS "legends_service requires: ${all_libraries}")
-add_executable(legends_service
-  ${CMAKE_CURRENT_SOURCE_DIR}/legends_service.cpp
-  ${hw_proto_srcs}
-  ${hw_grpc_srcs}
-)
-target_link_libraries(legends_service
-  world_landmass
-  language_name
-  part_of_speech
-  ${_REFLECTION}
-  ${_GRPC_GRPCPP}
-)
-add_dependencies(legends_service
-  convert_all
-  ${all_libraries}
+
+if(UNIX AND NOT APPLE)
+    set(PROJECT_LIBS ${PROJECT_LIBS} SDL)
+endif()
+
+message(STATUS "RemoteLegends requires: ${PROJECT_SRCS}")
+
+dfhack_plugin(RemoteLegends
+  ${PROJECT_SRCS}
+  ${PLUGIN_PROTO_SRCS}
+  LINK_LIBRARIES protobuf-lite ${PROJECT_LIBS}
+  COMPILE_FLAGS_MSVC "/FI\"Export.h\""
+  COMPILE_FLAGS_GCC "-include Export.h -Wno-misleading-indentation"
+  DEPENDS convert_all proto_all xml_all
 )

@@ -1,0 +1,5 @@
+<data-definition>
+    <struct-type type-name='world_landmass' export='true'>
+        <compound name='name' export-as='string'/>
+    </struct-type>
+</data-definition>
