@@ -12,6 +12,9 @@
         <compound name='name' export-as='string'/>
         <pointer name="feature_init" export='false'/>
     </struct-type>	  
+    <struct-type type-name='world_mountain_peak' export='true'>
+        <compound name='name' export-as='string'/>
+    </struct-type>
     <struct-type type-name='world_river' export='true'>
         <compound name='name' export-as='string'/>
     </struct-type>

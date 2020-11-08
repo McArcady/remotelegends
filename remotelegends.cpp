@@ -36,7 +36,7 @@ command_result RemoteLegends_version(color_ostream &out, vector<string> &paramet
 }
 
 void convert_language_name_to_string(const df::language_name* in, string* out) {
-	*out = Translation::TranslateName(in, false);
+	*out = DF2UTF(Translation::TranslateName(in));
 }
 
 command_result check_list_request(color_ostream &stream, const RemoteLegends::MyListRequest *in, int max_end, int* startp, int* endp) {
@@ -73,14 +73,17 @@ command_result Get##UTYPE##List(color_ostream &stream, const RemoteLegends::MyLi
 #include "include/world_landmass.h"
 METHOD_GET_LIST(WorldLandmass, world_landmass, landmasses)
 
+#include "include/world_mountain_peak.h"
+METHOD_GET_LIST(WorldMountainPeak, world_mountain_peak, mountain_peaks)
+
 #include "include/world_region.h"
 METHOD_GET_LIST(WorldRegion, world_region, regions)
 
-#include "include/world_underground_region.h"
-METHOD_GET_LIST(WorldUndergroundRegion, world_underground_region, underground_regions)
-
 #include "include/world_river.h"
 METHOD_GET_LIST(WorldRiver, world_river, rivers)
+
+#include "include/world_underground_region.h"
+METHOD_GET_LIST(WorldUndergroundRegion, world_underground_region, underground_regions)
 
 
 /* plugin control */
@@ -101,9 +104,10 @@ DFhackCExport RPCService *plugin_rpcconnect(color_ostream &)
 {
     RPCService *svc = new RPCService();
     svc->addFunction("GetWorldLandmassList", GetWorldLandmassList);
+    svc->addFunction("GetWorldMountainPeakList", GetWorldMountainPeakList);
     svc->addFunction("GetWorldRegionList", GetWorldRegionList);
-    svc->addFunction("GetWorldUndergroundRegionList", GetWorldUndergroundRegionList);
     svc->addFunction("GetWorldRiverList", GetWorldRiverList);
+    svc->addFunction("GetWorldUndergroundRegionList", GetWorldUndergroundRegionList);
     return svc;
 }
 

@@ -5,26 +5,29 @@ option optimize_for = LITE_RUNTIME;
 // Plugin: RemoteLegends
 
 import "world_landmass.proto";
+import "world_mountain_peak.proto";
 import "world_region.proto";
-import "world_underground_region.proto";
 import "world_river.proto";
-
-// RPC GetWorldLandmassList : ListRequest -> WorldLandmassList
+import "world_underground_region.proto";
 
 message WorldLandmassList {
     repeated dfproto.world_landmass list = 1;
+}
+
+message WorldMountainPeakList {
+    repeated dfproto.world_mountain_peak list = 1;
 }
 
 message WorldRegionList {
     repeated dfproto.world_region list = 1;
 }
 
-message WorldUndergroundRegionList {
-    repeated dfproto.world_underground_region list = 1;
-}
-
 message WorldRiverList {
     repeated dfproto.world_river list = 1;
+}
+
+message WorldUndergroundRegionList {
+    repeated dfproto.world_underground_region list = 1;
 }
 
 message SingleBool {
