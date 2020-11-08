@@ -18,8 +18,6 @@
 #include "df/world_data.h"
 #include "df/world_landmass.h"
 
-#include "include/world_landmass.h"
-
 using namespace DFHack;
 using namespace df::enums;
 using std::vector;
@@ -41,8 +39,7 @@ void convert_language_name_to_string(const df::language_name* in, string* out) {
 	*out = Translation::TranslateName(in, false);
 }
 
-command_result GetWorldLandmassList(color_ostream &stream, const RemoteLegends::MyListRequest *in, RemoteLegends::WorldLandmassList *out)
-{
+command_result check_list_request(color_ostream &stream, const RemoteLegends::MyListRequest *in, int max_end, int* startp, int* endp) {
     if (!Core::getInstance().isWorldLoaded()) {
         stream.printerr("No world loaded\n");
         return CR_FAILURE;
@@ -51,20 +48,40 @@ command_result GetWorldLandmassList(color_ostream &stream, const RemoteLegends::
         stream.printerr("Missing parameters\n");
         return CR_WRONG_USAGE;		
 	}
-    df::world_data * data = df::global::world->world_data;
 	int start = in->has_list_start() ? in->list_start() : 0;
-	int end = in->has_list_end() ? in->list_end() : data->landmasses.size()-1;
-	if (start<0 || end<start || end>data->landmasses.size()) {
+	int end = in->has_list_end() ? in->list_end() : max_end-1;
+	if (start<0 || end<start || end>max_end) {
         stream.printerr("Invalid param start=%d/end=%d\n", start, end);
 		return CR_WRONG_USAGE;
 	}
-	auto sublist = std::vector<df::world_landmass*>(&data->landmasses[start], &data->landmasses[end+1]);
-    for (auto lm : sublist) {
-		DFProto::describe_world_landmass(out->add_landmass_list(), lm);
-    }
-	stream.print("%d landmasses found\n", sublist.size());
-    return CR_OK;	
+	*startp = start;
+	*endp = end;
+	return CR_OK;
 }
+#define METHOD_GET_LIST(UTYPE, TYPE, VNAME)								\
+command_result Get##UTYPE##List(color_ostream &stream, const RemoteLegends::MyListRequest *in, RemoteLegends::UTYPE##List *out) { \
+    df::world_data * data = df::global::world->world_data;				\
+	int start, end;														\
+	command_result rc = check_list_request(stream, in, data->VNAME.size(), &start, &end); \
+	if (rc)	{ return rc; }												\
+    for (auto elt : std::vector<df::TYPE*>(&data->VNAME[start], &data->VNAME[end+1])) {	\
+		DFProto::describe_##TYPE(out->add_list(), elt);					\
+    }																	\
+    return CR_OK; }														\
+
+
+#include "include/world_landmass.h"
+METHOD_GET_LIST(WorldLandmass, world_landmass, landmasses)
+
+#include "include/world_region.h"
+METHOD_GET_LIST(WorldRegion, world_region, regions)
+
+#include "include/world_underground_region.h"
+METHOD_GET_LIST(WorldUndergroundRegion, world_underground_region, underground_regions)
+
+#include "include/world_river.h"
+METHOD_GET_LIST(WorldRiver, world_river, rivers)
+
 
 /* plugin control */
 
@@ -84,6 +101,9 @@ DFhackCExport RPCService *plugin_rpcconnect(color_ostream &)
 {
     RPCService *svc = new RPCService();
     svc->addFunction("GetWorldLandmassList", GetWorldLandmassList);
+    svc->addFunction("GetWorldRegionList", GetWorldRegionList);
+    svc->addFunction("GetWorldUndergroundRegionList", GetWorldUndergroundRegionList);
+    svc->addFunction("GetWorldRiverList", GetWorldRiverList);
     return svc;
 }
 

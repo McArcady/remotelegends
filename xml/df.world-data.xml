@@ -2,4 +2,17 @@
     <struct-type type-name='world_landmass' export='true'>
         <compound name='name' export-as='string'/>
     </struct-type>
+    <struct-type type-name='world_region' export='true'>
+        <compound name='name' export-as='string'/>
+    </struct-type>
+    <enum-type type-name='world_region_type' base-type='int16_t' export='true'/>	
+    <struct-type type-name='world_population' export='true'/>
+    <enum-type type-name='world_population_type' export='true'/>
+    <struct-type type-name='world_underground_region' export='true'>
+        <compound name='name' export-as='string'/>
+        <pointer name="feature_init" export='false'/>
+    </struct-type>	  
+    <struct-type type-name='world_river' export='true'>
+        <compound name='name' export-as='string'/>
+    </struct-type>
 </data-definition>

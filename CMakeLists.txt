@@ -58,7 +58,7 @@ foreach (diff_file ${structures})
 	${xml_file} "${XML_PATCH_DIR}/${filter}" > ${tmp_xml_file}
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/protogen/merge.py
     COMMENT "Patching xml structure ${filter}"
-    DEPENDS ${xml_file}
+    DEPENDS ${xml_file} "${XML_PATCH_DIR}/${filter}"
   )  
 
   # identify types in each xml file of df-structures  
@@ -74,7 +74,7 @@ foreach (diff_file ${structures})
     continue()
   endif()
   list(LENGTH proto_files types)
-  message(STATUS "${filter}: ${types} exported types")
+#  message(STATUS "${filter}: ${types} exported types")
   
   execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
 	${XML_PATCH_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -145,7 +145,7 @@ if(UNIX AND NOT APPLE)
     set(PROJECT_LIBS ${PROJECT_LIBS} SDL)
 endif()
 
-message(STATUS "RemoteLegends requires: ${PROJECT_SRCS}")
+#message(STATUS "RemoteLegends requires: ${PROJECT_SRCS}")
 
 dfhack_plugin(RemoteLegends
   ${PROJECT_SRCS}
