@@ -98,6 +98,7 @@ class GlobalTypeRenderer:
     def render_h(self):
         rdr = CppRenderer(self.ns, self.proto_ns, 'DFProto')
         out  = '/* THIS FILE WAS GENERATED. DO NOT EDIT. */\n'
+        out += '#include "DataDefs.h"\n'
         out += '#include "Export.h"\n'
         out += '#include <stdint.h>\n'
         out += '#include \"df/%s.h\"\n' % (self.get_type_name())

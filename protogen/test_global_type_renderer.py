@@ -68,6 +68,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         """
         self.H = """
         /* THIS FILE WAS GENERATED. DO NOT EDIT. */
+        #include "DataDefs.h"
         #include "Export.h"
         #include <stdint.h>
         #include "df/history_event_reason_info.h"

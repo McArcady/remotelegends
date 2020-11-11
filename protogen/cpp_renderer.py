@@ -335,19 +335,19 @@ class CppRenderer(AbstractRenderer):
     # unions
 
     def render_field_union(self, xml):
-        name = self.get_name(xml)
+        names = self.get_name(xml)
         if self.last_enum_descr == None:
-            return '/* failed to find a discriminator for union %s */\n' % (self.get_typedef_name(xml, name[0]))
+            return '/* failed to find a discriminator for union %s */\n' % (self.get_typedef_name(xml, names[0]))
         tname = self.last_enum_descr.get('type-name')
         ename = self.get_name(self.last_enum_descr)[1]
         out  = '  switch (dfhack->%s) {\n' % (ename)
         for item in xml.findall(f'{self.ns}field'):
             iname = self.get_name(item)
             out += '    case ::df::enums::%s::%s:\n' % (tname, iname[1])
-            out += '      proto->set_%s(dfhack->%s.%s);\n' % (iname[0], name[1], iname[1])
+            out += '      proto->set_%s(dfhack->%s.%s);\n' % (iname[0], names[1], iname[1])
             out += '      break;\n'
         out += '    default:\n'
-        out += '      proto->clear_%s();\n' % (name[0])
+        out += '      proto->clear_%s();\n' % (names[0])
         out += '  }\n'
         return out
 
@@ -355,13 +355,13 @@ class CppRenderer(AbstractRenderer):
     # conversion of type
     
     def render_field_conversion(self, xml, ctx=None):
-        name = self.get_name(xml)
-        tname = self.get_typedef_name(xml, name)
+        names = self.get_name(xml)
+        tname = self.get_typedef_name(xml, names[0])
         new_tname = xml.get('export-as')
         assert new_tname
         self.dfproto_imports.add('conversion')
         return self.ident(xml) + 'convert_%s_to_%s(&dfhack->%s, proto->mutable_%s());\n' % (
-            tname, new_tname, name[0], name[0]
+            tname, new_tname, names[0], names[0]
         )
     
 

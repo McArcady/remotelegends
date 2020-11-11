@@ -91,7 +91,7 @@ class AbstractRenderer:
         if not pbname:
             pbname = dfname
         # protobuf field names are lowercase, except enum items
-        if not xml.tag == 'enum-item':
+        if xml.tag != 'enum-item':
             pbname = pbname.lower()
         return pbname, dfname
 

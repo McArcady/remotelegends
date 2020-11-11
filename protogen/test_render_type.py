@@ -121,9 +121,9 @@ class TestRenderType(unittest.TestCase):
         PROTO = """
         message announcement_flags {
           enum mask {
-            DO_MEGA = 0x0; /* BOX */
-            PAUSE = 0x1; /* P */
-            RECENTER = 0x2; /* R */
+            do_mega = 0x0; /* BOX */
+            pause = 0x1; /* P */
+            recenter = 0x2; /* R */
           }
           required fixed32 flags = 1;
         }
@@ -134,6 +134,10 @@ class TestRenderType(unittest.TestCase):
           proto->set_flags(dfhack->whole);
         }
         """
+        CPP = None
+        IMPORTS = []
+        DFPROTO_IMPORTS = []
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
         
 
     #
