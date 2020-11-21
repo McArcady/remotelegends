@@ -41,6 +41,9 @@ def main():
     parser.add_argument('--exceptions', metavar='EFILE', type=str,
                         default=None,
                         help='exceptions file (default=<none>)')
+    parser.add_argument('--transform', metavar='XSLT', type=str, action='append',
+                        default=None,
+                        help='apply this transform before processing xml (default=<none>)')
     args = parser.parse_args()
 
     # input dir
@@ -58,7 +61,7 @@ def main():
 
     # collect types
     transforms = [
-        etree.XSLT(etree.parse(os.path.dirname(indir)+'/'+f)) for f in ['lower-1.xslt', 'lower-2.xslt']
+        etree.XSLT(etree.parse(f)) for f in args.transform
     ]
     filt = indir
     if os.path.isdir(indir):

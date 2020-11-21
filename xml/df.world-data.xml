@@ -19,3 +19,10 @@
         <compound name='name' export-as='string'/>
     </struct-type>
 </data-definition>
+
+<!--
+Local Variables:
+indent-tabs-mode: nil
+nxml-child-indent: 4
+End:
+-->

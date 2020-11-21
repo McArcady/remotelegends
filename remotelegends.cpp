@@ -70,19 +70,19 @@ command_result Get##UTYPE##List(color_ostream &stream, const RemoteLegends::MyLi
     return CR_OK; }														\
 
 
-#include "include/world_landmass.h"
+#include "world_landmass.h"
 METHOD_GET_LIST(WorldLandmass, world_landmass, landmasses)
 
-#include "include/world_mountain_peak.h"
+#include "world_mountain_peak.h"
 METHOD_GET_LIST(WorldMountainPeak, world_mountain_peak, mountain_peaks)
 
-#include "include/world_region.h"
+#include "world_region.h"
 METHOD_GET_LIST(WorldRegion, world_region, regions)
 
-#include "include/world_river.h"
+#include "world_river.h"
 METHOD_GET_LIST(WorldRiver, world_river, rivers)
 
-#include "include/world_underground_region.h"
+#include "world_underground_region.h"
 METHOD_GET_LIST(WorldUndergroundRegion, world_underground_region, underground_regions)
 
 
