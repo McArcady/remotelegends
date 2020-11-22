@@ -35,29 +35,28 @@ set(PLUGIN_PROTO_SRCS "")
 file(GLOB structures ${XML_PATCH_DIR}/${FILTER})
 foreach (diff_file ${structures})
 
-  get_filename_component(filter ${diff_file} NAME)
-  if (NOT EXISTS "${XML_DIR}/${filter}")
+  get_filename_component(fname ${diff_file} NAME)
+  if (NOT EXISTS "${XML_DIR}/${fname}")
 	continue()
   endif()
   
   # patch dfhack structures with our filters
-  set(xml_file "${XML_DIR}/${filter}")
-  set(tmp_xml_file "${XML_BUILD_DIR}/${filter}.tmp")
+  set(xml_file "${XML_DIR}/${fname}")
+  set(tmp_xml_file "${XML_BUILD_DIR}/${fname}.tmp")
   add_custom_command(
     OUTPUT ${tmp_xml_file}
 	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/merge.py
-	${xml_file} "${XML_PATCH_DIR}/${filter}" > ${tmp_xml_file}
+	${xml_file} "${XML_PATCH_DIR}/${fname}" > ${tmp_xml_file}
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/protogen/merge.py
-    COMMENT "Patching xml structure ${filter}"
-    DEPENDS ${xml_file} "${XML_PATCH_DIR}/${filter}"
+    COMMENT "Patching xml structure ${fname}"
+    DEPENDS ${xml_file} "${XML_PATCH_DIR}/${fname}"
   )  
 
   # identify types in each xml file of df-structures  
   execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
-	${XML_PATCH_DIR} ${PROTO_BUILD_DIR}
+	${tmp_xml_file} ${PROTO_BUILD_DIR}
 	--type proto
 	--separator ";"
-	--filter ${filter}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	OUTPUT_VARIABLE proto_files
   )
@@ -65,21 +64,19 @@ foreach (diff_file ${structures})
     continue()
   endif()
   list(LENGTH proto_files types)
-#  message(STATUS "${filter}: ${types} exported types")
+  message(STATUS "${fname}: ${types} exported types")
   
   execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
-	${XML_PATCH_DIR} ${INCLUDE_BUILD_DIR}
+	${tmp_xml_file} ${INCLUDE_BUILD_DIR}
 	--type h
 	--separator ";"
-	--filter ${filter}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE header_files
   )
   execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
-	${XML_PATCH_DIR} ${SOURCE_BUILD_DIR}
+	${tmp_xml_file} ${SOURCE_BUILD_DIR}
 	--type cpp
 	--separator ";"
-	--filter ${filter}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE source_files
   )
@@ -100,12 +97,12 @@ foreach (diff_file ${structures})
   	--exceptions=${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
     ${tmp_xml_file}
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/protogen/protogen.py
-    COMMENT "Generating protobuf messages and conversion code for ${filter}"
+    COMMENT "Generating protobuf messages and conversion code for ${fname}"
     DEPENDS ${tmp_xml_file} ${GENERATE_INPUT_SCRIPTS} ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
   )
 
   # define target for all products of this xml file
-  string(REGEX REPLACE "/" "_" struct_target ${filter})
+  string(REGEX REPLACE "/" "_" struct_target ${fname})
   string(REGEX REPLACE "\\." "_" struct_target ${struct_target})
   add_custom_target(${struct_target} DEPENDS ${proto_files} ${header_files} ${source_files})
   add_dependencies(xml_all ${struct_target})
@@ -143,7 +140,7 @@ if(UNIX AND NOT APPLE)
     set(PROJECT_LIBS ${PROJECT_LIBS} SDL)
 endif()
 
-message(STATUS "RemoteLegends requires: ${PROJECT_SRCS} ${PLUGIN_PROTO_SRCS}")
+#message(STATUS "RemoteLegends requires: ${PROJECT_SRCS} ${PLUGIN_PROTO_SRCS}")
 
 #
 # compile and link options
