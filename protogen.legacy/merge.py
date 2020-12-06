@@ -24,12 +24,12 @@ def parse_node(node1, node2):
                     if sub1.get(attr) != sub2.get(attr):
                         sub1.attrib[attr] = sub2.get(attr)
                         num += 1
-                if num:
-                    print('%s("%s"): %d attribute(s) added' % (
-                        sub1.getroottree().getpath(sub1),
-                        sub1.get('type-name') or sub1.get('name') or sub1.tag,
-                        num                        
-                    ), file=sys.stderr)
+                # if num:
+                #     print('%s("%s"): %d attribute(s) added' % (
+                #         sub1.getroottree().getpath(sub1),
+                #         sub1.get('type-name') or sub1.get('name') or sub1.tag,
+                #         num                        
+                #     ), file=sys.stderr)
                 # parse sub-elements
                 parse_node(sub1, sub2)
 

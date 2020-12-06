@@ -74,7 +74,12 @@ class TestRenderType(unittest.TestCase):
           ui_advmode_menu_Look = 1;
         }
         """
-        CPP = None
+        CPP = """
+        void DFProto::describe_ui_advmode_menu(dfproto::ui_advmode_menu* proto, df::ui_advmode_menu* dfhack)
+        {
+          *proto = static_cast<dfproto::ui_advmode_menu>(*dfhack);
+        }
+        """
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
@@ -256,8 +261,11 @@ class TestRenderType(unittest.TestCase):
         CPP = """
         void DFProto::describe_entity_site_link(dfproto::entity_site_link* proto, df::entity_site_link* dfhack) {
           proto->set_anon_1(dfhack->anon_1);
-          proto->mutable_flags()->set_flags(dfhack->flags.whole);
-	  proto->set_anon_2(dfhack->anon_2);
+          auto describe_T_flags = [](dfproto::entity_site_link_T_flags* proto, df::entity_site_link::T_flags* dfhack) {
+            proto->set_flags(dfhack->whole);
+          };
+          describe_T_flags(proto->mutable_flags(), &dfhack->flags);
+          proto->set_anon_2(dfhack->anon_2);
         }
         """
         IMPORTS = []

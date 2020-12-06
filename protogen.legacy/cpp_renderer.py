@@ -62,7 +62,13 @@ class CppRenderer(AbstractRenderer):
     # enumerations
 
     def render_type_enum(self, xml, tname=None):
-        raise TypeError('enum type does not need a describe function')
+        if not tname:
+            tname = xml.get('type-name')
+            out  = self.ident(xml) + 'void %s::describe_%s(%s::%s* proto, df::%s* dfhack) {\n' % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
+        out += '  *proto = static_cast<dfproto::%s>(*dfhack);\n' % (tname)
+        out += '}\n'
+        return out;
+#        raise TypeError('enum type does not need a describe function')
 
     def _convert_enum(self, tname, names, array=False, is_ptr=False):
         if is_ptr:
@@ -88,18 +94,39 @@ class CppRenderer(AbstractRenderer):
     # bitfields
 
     def render_type_bitfield(self, xml, tname=None):
-        raise TypeError('bitfield type does not need a describe function')
+        if not tname:
+            tname = xml.get('type-name')
+            out  = self.ident(xml) + 'void %s::describe_%s(%s::%s* proto, df::%s* dfhack) {\n' % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
+        out += '  proto->set_flags(dfhack->whole);\n'
+        out += '}\n'
+        return out;
+#        raise TypeError('bitfield type does not need a describe function')
 
-    def _convert_bitfield(self, names, array=False):
-        return 'proto->%s_%s()->set_flags(dfhack->%s%s.whole);\n' % (
-            'add' if array else 'mutable', names[0],
+    def _convert_bitfield(self, tname, names, array=False):
+        return 'describe_%s(proto->%s_%s(), &dfhack->%s%s);\n' % (
+            tname, 'add' if array else 'mutable', names[0],
             names[1], '[i]' if array else ''
         )
         
     def render_field_bitfield(self, xml):
         names = self.get_name(xml)
-        return self.ident(xml) + self._convert_bitfield(names)
+        tname = self.get_typedef_name(xml)
+        return self.ident(xml) + self._convert_bitfield(tname, names)
 
+    def _convert_anon_bitfield(self, xml, name=None):
+        if not name:
+            name = self.get_name(xml)[0]
+        tname = self.get_typedef_name(xml, name)
+        rdr = self.copy()
+        rdr.outer_types.append(tname)
+        # lambda
+        out  = self.ident(xml) + 'auto describe_%s = [](dfproto::%s* proto, df::%s* dfhack) {\n' % (
+            tname, rdr.outer_proto_tname(), rdr.outer_dfhack_tname()
+        )
+        out += '  proto->set_flags(dfhack->whole);\n'
+        out += '};\n'
+        return out
+    
     
     # simple fields
 
@@ -151,9 +178,9 @@ class CppRenderer(AbstractRenderer):
         if subtype == 'enum':
             self.imports.add(tname)
             return self.render_field_enum(xml)
-        if subtype == 'bitfield':
-            self.imports.add(tname)
-            return self.render_field_bitfield(xml)
+        # if subtype == 'bitfield':
+        #     self.imports.add(tname)
+        #     return self.render_field_bitfield(xml)
         if subtype == 'df-linked-list':
             self.imports.add(tname)
         self.dfproto_imports.add(tname)
@@ -229,7 +256,9 @@ class CppRenderer(AbstractRenderer):
             subtype = xml[0].get(f'{self.ns}subtype')
             tname = xml[0].get('type-name')
             if subtype == 'bitfield':
-                item_str = self._convert_bitfield(names, array=True)
+                out += self._convert_anon_bitfield(xml[0], names[0])
+                tname = tname or 'T_'+names[0]
+                item_str = self._convert_bitfield(tname, names, array=True)
             elif subtype == 'enum' or tname and tname.endswith('_type') or tname in self.exceptions_enum:
                 if tname:
                     self.imports.add(tname)
@@ -314,8 +343,8 @@ class CppRenderer(AbstractRenderer):
         subtype = xml.get(f'{self.ns}subtype')
         if subtype == 'enum':
             return self.render_field_enum(xml)
-        if subtype == 'bitfield':
-            return self.render_field_bitfield(xml)
+        # if subtype == 'bitfield':
+        #     return self.render_field_bitfield(xml)
         
         anon = xml.get(f'{self.ns}anon-compound')
         union = xml.get('is-union')
@@ -325,10 +354,16 @@ class CppRenderer(AbstractRenderer):
         if not ctx.names:
             ctx.names = self.get_name(xml)
         tname = self.get_typedef_name(xml, ctx.names[0])
-        out  = self.copy()._convert_anon_compound(xml, ctx.names[0])
-        out += self.ident(xml) + self._convert_field_compound(
-            tname, ctx.names, ctx.deref
-        )
+        if subtype == 'bitfield':
+            out = self.copy()._convert_anon_bitfield(xml, ctx.names[0])
+            out += self.ident(xml) + self._convert_bitfield(
+                tname, ctx.names
+            )
+        else:
+            out  = self.copy()._convert_anon_compound(xml, ctx.names[0])
+            out += self.ident(xml) + self._convert_field_compound(
+                tname, ctx.names, ctx.deref
+            )
         return out
     
 

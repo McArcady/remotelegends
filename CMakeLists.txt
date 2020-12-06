@@ -18,6 +18,9 @@ set(PROTO_BUILD_DIR   "${CMAKE_CURRENT_BINARY_DIR}/proto")
 set(INCLUDE_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
 set(SOURCE_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}/src")
 
+set(PROTOGEN "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/protogen.py")
+set(MERGE    "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/merge.py")
+set(LIST     "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/list.py")
 
 # target to generate all proto files and conversion code (needed since pb dependencies cannot be handled precisely)
 add_custom_target(xml_all)
@@ -43,17 +46,19 @@ foreach (diff_file ${structures})
   # patch dfhack structures with our filters
   set(xml_file "${XML_DIR}/${fname}")
   set(tmp_xml_file "${XML_BUILD_DIR}/${fname}.tmp")
-  add_custom_command(
-    OUTPUT ${tmp_xml_file}
-	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/merge.py
-	${xml_file} "${XML_PATCH_DIR}/${fname}" > ${tmp_xml_file}
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/protogen/merge.py
-    COMMENT "Patching xml structure ${fname}"
-    DEPENDS ${xml_file} "${XML_PATCH_DIR}/${fname}"
+  message(STATUS "Patching xml structure ${fname}")
+  execute_process(COMMAND mkdir -p ${XML_BUILD_DIR}) 
+  execute_process(
+  	COMMAND ${PYTHON_EXECUTABLE} ${MERGE}
+  	${xml_file} "${XML_PATCH_DIR}/${fname}"
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  	OUTPUT_FILE ${tmp_xml_file}
   )  
 
   # identify types in each xml file of df-structures  
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
+  execute_process(
+	COMMAND mkdir -p ${PROTO_BUILD_DIR}
+	COMMAND ${PYTHON_EXECUTABLE} ${LIST}
 	${tmp_xml_file} ${PROTO_BUILD_DIR}
 	--type proto
 	--separator ";"
@@ -66,14 +71,14 @@ foreach (diff_file ${structures})
   list(LENGTH proto_files types)
   message(STATUS "${fname}: ${types} exported types")
   
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
 	${tmp_xml_file} ${INCLUDE_BUILD_DIR}
 	--type h
 	--separator ";"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE header_files
   )
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/list.py
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
 	${tmp_xml_file} ${SOURCE_BUILD_DIR}
 	--type cpp
 	--separator ";"
@@ -81,12 +86,12 @@ foreach (diff_file ${structures})
     OUTPUT_VARIABLE source_files
   )
 
-  file(GLOB GENERATE_INPUT_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/protogen/*.py ${XML_DIR}/*.xslt)
+  file(GLOB GENERATE_INPUT_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/*.py ${XML_DIR}/*.xslt)
   
   # generate code from the .xml
   add_custom_command(
     OUTPUT ${proto_files} ${header_files} ${source_files}
-    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protogen/protogen.py
+    COMMAND ${PYTHON_EXECUTABLE} ${PROTOGEN}
     --proto_out ${PROTO_BUILD_DIR}
     --cpp_out ${SOURCE_BUILD_DIR}
     --h_out ${INCLUDE_BUILD_DIR}
@@ -96,9 +101,9 @@ foreach (diff_file ${structures})
 	# TODO: no need for exceptions.conf ?
   	--exceptions=${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
     ${tmp_xml_file}
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/protogen/protogen.py
+    MAIN_DEPENDENCY ${PROTOGEN}
     COMMENT "Generating protobuf messages and conversion code for ${fname}"
-    DEPENDS ${tmp_xml_file} ${GENERATE_INPUT_SCRIPTS} ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
+    DEPENDS ${GENERATE_INPUT_SCRIPTS} ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
   )
 
   # define target for all products of this xml file

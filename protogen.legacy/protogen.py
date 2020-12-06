@@ -42,7 +42,7 @@ def main():
                         default=None,
                         help='exceptions file (default=<none>)')
     parser.add_argument('--transform', metavar='XSLT', type=str, action='append',
-                        default=None,
+                        default=[],
                         help='apply this transform before processing xml (default=<none>)')
     args = parser.parse_args()
 
@@ -63,6 +63,8 @@ def main():
     transforms = [
         etree.XSLT(etree.parse(f)) for f in args.transform
     ]
+    if transforms and not args.quiet:
+        sys.stdout.write(COLOR_OKBLUE + 'using %s\n' % (', '.join(args.transform)) + COLOR_ENDC)
     filt = indir
     if os.path.isdir(indir):
         filt = indir+'df.*.xml'
@@ -84,7 +86,8 @@ def main():
         for item in xml.getroot():
             try:
                 export = item.get('export')
-                if export != 'true' or 'global-type' not in item.tag:
+                if export=='false' or 'global-type' not in item.tag:
+                    print(item.tag, export)
                     if not args.quiet:
                         sys.stdout.write('skipped type '+item.get('type-name') + '\n')
                     continue

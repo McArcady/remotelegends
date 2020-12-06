@@ -110,10 +110,10 @@ class TestRenderField(unittest.TestCase):
         required knowledge_scholar_flags_0 flags_0 = 1;
         """
         CPP = """
-        proto->mutable_flags_0()->set_flags(dfhack->flags_0.whole);
+        describe_knowledge_scholar_flags_0(proto->mutable_flags_0(), &dfhack->flags_0);
         """
         IMPORTS = ['knowledge_scholar_flags_0']
-        DFPROTO_IMPORTS = []
+        DFPROTO_IMPORTS = ['knowledge_scholar_flags_0']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_render_field_local_bitfield(self):
@@ -138,11 +138,14 @@ class TestRenderField(unittest.TestCase):
         required T_gems_use gems_use = 1;
         """
         CPP = """
-        proto->mutable_gems_use()->set_flags(dfhack->gems_use.whole);
+        auto describe_T_gems_use = [](dfproto::mytype_T_gems_use* proto, df::mytype::T_gems_use* dfhack) {
+          proto->set_flags(dfhack->whole);
+        };
+        describe_T_gems_use(proto->mutable_gems_use(), &dfhack->gems_use);
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
-        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
     def test_render_field_anon_bitfield(self):
         XML = """
@@ -164,11 +167,14 @@ class TestRenderField(unittest.TestCase):
         required T_anon_3 anon_3 = 1;
         """
         CPP = """
-        proto->mutable_anon_3()->set_flags(dfhack->anon_3.whole);
+        auto describe_T_anon_3 = [](dfproto::mytype_T_anon_3* proto, df::mytype::T_anon_3* dfhack) {
+          proto->set_flags(dfhack->whole);
+        };        
+        describe_T_anon_3(proto->mutable_anon_3(), &dfhack->anon_3);
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
-        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
     
     #
@@ -312,13 +318,16 @@ class TestRenderField(unittest.TestCase):
         repeated T_killed_undead killed_undead = 1;
         """
         CPP = """
+        auto describe_T_killed_undead = [](dfproto::mytype_T_killed_undead* proto, df::mytype::T_killed_undead* dfhack) {
+          proto->set_flags(dfhack->whole);
+        };
         for (size_t i=0; i<dfhack->killed_undead.size(); i++) {
-          proto->add_killed_undead()->set_flags(dfhack->killed_undead[i].whole);
+          describe_T_killed_undead(proto->add_killed_undead(), &dfhack->killed_undead[i]);
         }
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
-        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
     
     def test_render_field_container_of_empty_bitfields(self):
         XML = """
@@ -329,19 +338,22 @@ class TestRenderField(unittest.TestCase):
         </ld:data-definition>
         """
         PROTO = """
-        message T_can_connect {
+        message machine_conn_modes {
           required fixed32 flags = 1;
         }
-        repeated T_can_connect can_connect = 1;
+        repeated machine_conn_modes can_connect = 1;
         """
         CPP = """
+        auto describe_machine_conn_modes = [](dfproto::mytype_machine_conn_modes* proto, df::mytype::machine_conn_modes* dfhack) {
+          proto->set_flags(dfhack->whole);
+        };
         for (size_t i=0; i<dfhack->can_connect.size(); i++) {
-          proto->add_can_connect()->set_flags(dfhack->can_connect[i].whole);
+          describe_machine_conn_modes(proto->add_can_connect(), &dfhack->can_connect[i]);
         }
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
-        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS, 'mytype')
 
     def test_render_field_container_of_enums(self):
         XML = """

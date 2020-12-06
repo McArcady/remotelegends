@@ -122,7 +122,7 @@ class GlobalTypeRenderer:
         proto_name = self.get_type_name() + '.proto'
         with open(proto_out + '/' + proto_name, 'w') as fil:
             fil.write(self.render_proto())
-        if self.get_meta_type() in ['struct-type', 'class-type']:
+        if self.get_meta_type() in ['struct-type', 'class-type', 'enum-type', 'bitfield-type']:
             cpp_name = self.get_type_name() + '.cpp'
             with open(cpp_out + '/' + cpp_name, 'w') as fil:
                 fil.write(self.render_cpp())

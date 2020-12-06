@@ -234,7 +234,7 @@ class ProtoRenderer(AbstractRenderer):
             # convert to list of refs to avoid circular dependencies
             tname = 'int32'
         if not tname and len(xml) > 0:
-            tname = 'T_'+ctx.name
+            tname = xml[0].get('type-name') or 'T_'+ctx.name
             subtype = xml[0].get(f'{self.ns}subtype')
             meta = xml[0].get(f'{self.ns}meta')
             if meta == 'pointer':
@@ -243,7 +243,6 @@ class ProtoRenderer(AbstractRenderer):
                 return '/* ignored container of containers %s */\n' % (ctx.name)
             elif subtype == 'bitfield':
                 # local anon bitfield
-                tname = 'T_'+ctx.name
                 out = self.render_field_bitfield(xml[0], ctx.set_keyword('repeated'), tname)
             elif subtype == 'enum':
                 out = self.render_field_enum(xml[0], ctx.set_keyword('repeated'))

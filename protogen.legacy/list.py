@@ -49,7 +49,7 @@ def main():
             if args.type == 'proto':
                 sys.stdout.write(outdir+tname+'.proto'+args.separator)
                 continue
-            if item.tag not in ['struct-type', 'class-type', 'df-linked-list-type']:
+            if item.tag not in ['struct-type', 'class-type', 'bitfield-type', 'df-linked-list-type']:
                 continue
             sys.stdout.write(outdir+tname+'.'+args.type+args.separator)
         except Exception as e:
