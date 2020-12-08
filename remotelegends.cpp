@@ -67,23 +67,13 @@ command_result Get##UTYPE##List(color_ostream &stream, const RemoteLegends::MyLi
     for (auto elt : std::vector<df::TYPE*>(&data->VNAME[start], &data->VNAME[end+1])) {	\
 		DFProto::describe_##TYPE(out->add_list(), elt);					\
     }																	\
-    return CR_OK; }														\
+    return CR_OK;														\
+}
 
+#include "methods.inc"
 
-#include "world_landmass.h"
-METHOD_GET_LIST(WorldLandmass, world_landmass, landmasses)
-
-#include "world_mountain_peak.h"
-METHOD_GET_LIST(WorldMountainPeak, world_mountain_peak, mountain_peaks)
-
-#include "world_region.h"
-METHOD_GET_LIST(WorldRegion, world_region, regions)
-
-#include "world_river.h"
-METHOD_GET_LIST(WorldRiver, world_river, rivers)
-
-#include "world_underground_region.h"
-METHOD_GET_LIST(WorldUndergroundRegion, world_underground_region, underground_regions)
+#undef METHOD_GET_LIST
+#define DFPROTO_INCLUDED 1
 
 
 /* plugin control */
@@ -100,14 +90,15 @@ DFhackCExport command_result plugin_init (color_ostream &out, std::vector <Plugi
     return CR_OK;
 }
 
+
 DFhackCExport RPCService *plugin_rpcconnect(color_ostream &)
 {
     RPCService *svc = new RPCService();
-    svc->addFunction("GetWorldLandmassList", GetWorldLandmassList);
-    svc->addFunction("GetWorldMountainPeakList", GetWorldMountainPeakList);
-    svc->addFunction("GetWorldRegionList", GetWorldRegionList);
-    svc->addFunction("GetWorldRiverList", GetWorldRiverList);
-    svc->addFunction("GetWorldUndergroundRegionList", GetWorldUndergroundRegionList);
+
+#define METHOD_GET_LIST(UTYPE, TYPE, VNAME) svc->addFunction("Get" #UTYPE "List", Get##UTYPE##List);
+#include "methods.inc"
+#undef METHOD_GET_LIST
+
     return svc;
 }
 
