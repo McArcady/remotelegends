@@ -103,7 +103,12 @@ class TestRenderType(unittest.TestCase):
           conflict_level_anon_1 = -3;
         }
         """
-        CPP = None
+        CPP = """
+        void DFProto::describe_conflict_level(dfproto::conflict_level* proto, df::conflict_level* dfhack)
+        {
+          *proto = static_cast<dfproto::conflict_level>(*dfhack);
+        }
+        """
         IMPORTS = []
         DFPROTO_IMPORTS = []
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
@@ -295,7 +300,9 @@ class TestRenderType(unittest.TestCase):
         """
         CPP = """
         void DFProto::describe_history_event_reason_info(dfproto::history_event_reason_info* proto, df::history_event_reason_info* dfhack) {
-          proto->set_type(static_cast<dfproto::history_event_reason>(dfhack->type));
+          dfproto::history_event_reason type;
+          describe_history_event_reason(&type, &dfhack->type);
+          proto->set_type(type);
           switch (dfhack->type) {
             case ::df::enums::history_event_reason::glorify_hf:
               proto->set_glorify_hf(dfhack->data.glorify_hf);
@@ -309,7 +316,7 @@ class TestRenderType(unittest.TestCase):
         }
         """
         IMPORTS = ['history_event_reason']
-        DFPROTO_IMPORTS = []
+        DFPROTO_IMPORTS = ['history_event_reason']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
 
     def test_render_type_struct_with_container_of_pointers(self):
