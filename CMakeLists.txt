@@ -27,43 +27,61 @@ add_custom_target(xml_all)
 #add_custom_target(proto_all)
 add_custom_target(convert_all)
 
-# all cpp files
-set(PROJECT_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/remotelegends.cpp")
-set(all_libraries "")
-set(PLUGIN_PROTO_SRCS "")
+# types to be exported
+#set(EXPORTED_TYPES world_landmass world_region world_mountain_peak world_river world_underground_region)
+
+# result of
+# $ ./protogen/dependencies.py ../df-structures/df.*.xml  --type   world_landmass world_region world_mountain_peak world_river world_underground_region --separator=';'
+# TODO: generate this list from EXPORTED_TYPES using dag.py --ancestors
+# TODO: export proto files corresponding to theses types only
+set(TYPES "biome_type;coord2d;coord2d_path;feature;feature_alteration;feature_init;language_name;language_name_type;layer_type;part_of_speech;save_version;world_landmass;world_mountain_peak;world_population;world_population_type;world_region;world_region_type;world_river;world_underground_region")
+
+# source files of the generated types
+# TODO: generate this list from EXPORTED_TYPES using dag.py --sources
+set(XMLS "df.language.xml;df.map.xml;df.version.xml;df.viewscreen.xml;df.world-data.xml")
+
+# build list of generated files
+string(REGEX REPLACE "([^;]+)" "${PROTO_BUILD_DIR}/\\1.proto" PLUGIN_PROTOS "${TYPES}")
+string(REGEX REPLACE "([^;]+)" "${SOURCE_BUILD_DIR}/\\1.cpp" PROJECT_SRCS "${TYPES}")
+list(APPEND PROJECT_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/remotelegends.cpp")
+
 
 #
 # identify global types dependencies
 #
-file(GLOB structures ${XML_PATCH_DIR}/${FILTER})
+file(GLOB structures ${XML_DIR}/${FILTER})
 foreach (diff_file ${structures})
 
   get_filename_component(fname ${diff_file} NAME)
-  if (NOT EXISTS "${XML_DIR}/${fname}")
+  if (NOT ${fname} IN_LIST XMLS)
 	continue()
   endif()
-  
-  # patch dfhack structures with our filters
   set(xml_file "${XML_DIR}/${fname}")
-  set(tmp_xml_file "${XML_BUILD_DIR}/${fname}.tmp")
-  message(STATUS "Patching xml structure ${fname}")
-  execute_process(COMMAND mkdir -p ${XML_BUILD_DIR}) 
-  execute_process(
-  	COMMAND ${PYTHON_EXECUTABLE} ${MERGE}
-  	${xml_file} "${XML_PATCH_DIR}/${fname}"
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  	OUTPUT_FILE ${tmp_xml_file}
-  )  
+
+  # patch dfhack structures with our filters
+  if (EXISTS "${XML_PATCH_DIR}/${fname}")
+ 	message(STATUS "Patching xml structure ${fname}")
+	execute_process(COMMAND mkdir -p ${XML_BUILD_DIR}) 
+	set(tmp_xml_file "${XML_BUILD_DIR}/${fname}.tmp")
+	execute_process(
+  	  COMMAND ${PYTHON_EXECUTABLE} ${MERGE}
+  	  ${xml_file} "${XML_PATCH_DIR}/${fname}"
+	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  	  OUTPUT_FILE ${tmp_xml_file}
+    )
+  else()
+    set(tmp_xml_file "${xml_file}")
+  endif()
 
   # identify types in each xml file of df-structures  
   execute_process(
-	COMMAND mkdir -p ${PROTO_BUILD_DIR}
-	COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-	${tmp_xml_file} ${PROTO_BUILD_DIR}
-	--type proto
-	--separator ";"
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	OUTPUT_VARIABLE proto_files
+  	COMMAND mkdir -p ${PROTO_BUILD_DIR}
+  	COMMAND ${PYTHON_EXECUTABLE} ${LIST}
+  	${tmp_xml_file} ${PROTO_BUILD_DIR}
+  	--type proto
+  	--separator ";"
+  	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  	OUTPUT_VARIABLE proto_files
   )
   if ("${proto_files}" STREQUAL "")
     continue()
@@ -72,16 +90,16 @@ foreach (diff_file ${structures})
   message(STATUS "${fname}: ${types} exported types")
   
   execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-	${tmp_xml_file} ${INCLUDE_BUILD_DIR}
-	--type h
-	--separator ";"
+  	${tmp_xml_file} ${INCLUDE_BUILD_DIR}
+  	--type h
+  	--separator ";"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE header_files
   )
   execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-	${tmp_xml_file} ${SOURCE_BUILD_DIR}
-	--type cpp
-	--separator ";"
+  	${tmp_xml_file} ${SOURCE_BUILD_DIR}
+  	--type cpp
+  	--separator ";"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE source_files
   )
@@ -111,9 +129,6 @@ foreach (diff_file ${structures})
   string(REGEX REPLACE "\\." "_" struct_target ${struct_target})
   add_custom_target(${struct_target} DEPENDS ${proto_files} ${header_files} ${source_files})
   add_dependencies(xml_all ${struct_target})
-  
-  list(APPEND PROJECT_SRCS ${source_files})
-  list(APPEND PLUGIN_PROTOS ${proto_files} )
     
 endforeach()
 

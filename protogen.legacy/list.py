@@ -44,7 +44,7 @@ def main():
                 continue
             if not tname:
                 continue
-            if item.get('export') != 'true':
+            if item.get('export') == 'false':
                 continue
             if args.type == 'proto':
                 sys.stdout.write(outdir+tname+'.proto'+args.separator)
