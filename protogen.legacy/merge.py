@@ -4,7 +4,6 @@ import sys
 import argparse
 from lxml import etree
 
-
 def cmp_nodes(node1, node2):
     if node1.tag != node2.tag:
         return False
@@ -24,13 +23,6 @@ def parse_node(node1, node2):
                     if sub1.get(attr) != sub2.get(attr):
                         sub1.attrib[attr] = sub2.get(attr)
                         num += 1
-                # if num:
-                #     print('%s("%s"): %d attribute(s) added' % (
-                #         sub1.getroottree().getpath(sub1),
-                #         sub1.get('type-name') or sub1.get('name') or sub1.tag,
-                #         num                        
-                #     ), file=sys.stderr)
-                # parse sub-elements
                 parse_node(sub1, sub2)
 
 def main():
@@ -49,6 +41,6 @@ def main():
 
     # reexport base tree
     etree.ElementTree(xml1.getroot()).write(sys.stdout.buffer, pretty_print=True)
-
+    
 if __name__ == "__main__":
     main()

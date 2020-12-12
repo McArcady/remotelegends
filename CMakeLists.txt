@@ -18,13 +18,16 @@ set(PROTO_BUILD_DIR   "${CMAKE_CURRENT_BINARY_DIR}/proto")
 set(INCLUDE_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
 set(SOURCE_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}/src")
 
+set(ANTLR4   "/usr/bin/antlr4")
+set(DEPENDS  "${CMAKE_CURRENT_SOURCE_DIR}/protogen/dependencies.py")
+set(DAG      "${CMAKE_CURRENT_SOURCE_DIR}/protogen/dag.py")
 set(PROTOGEN "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/protogen.py")
 set(MERGE    "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/merge.py")
 set(LIST     "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/list.py")
 
 # target to generate all proto files and conversion code (needed since pb dependencies cannot be handled precisely)
 add_custom_target(xml_all)
-#add_custom_target(proto_all)
+add_custom_target(dag_all)
 add_custom_target(convert_all)
 
 # types to be exported
@@ -47,31 +50,63 @@ list(APPEND PROJECT_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/remotelegends.cpp")
 
 
 #
+# build grammar parser
+#
+set(PARSER_SRCS "DfLexer.interp;DfLexer.py;DfLexer.tokens;DfParser.interp;DfParser.py;DfParser.tokens;DfParserVisitor.py;__init__.py")
+list(TRANSFORM PARSER_SRCS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/protogen/parser/")
+set(GRAMMAR_SRCS "DfLexer.g4;DfParser.g4")
+list(TRANSFORM GRAMMAR_SRCS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/protogen/")
+add_custom_command(
+  OUTPUT ${PARSER_SRCS} ${DEPENDS}
+  COMMAND mkdir -p parser
+  COMMAND ${ANTLR4} -o parser -visitor -Dlanguage=Python3 DfLexer.g4 DfParser.g4
+  COMMAND touch parser/__init__.py
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/protogen
+  MAIN_DEPENDENCY ${ANTLR4}
+  COMMENT "Generating df-structures parser"
+  DEPENDS ${GRAMMAR_SRCS}
+)
+
+
+#
 # identify global types dependencies
 #
 file(GLOB structures ${XML_DIR}/${FILTER})
-foreach (diff_file ${structures})
+foreach (xml_file ${structures})
 
-  get_filename_component(fname ${diff_file} NAME)
+  get_filename_component(fname ${xml_file} NAME)
   if (NOT ${fname} IN_LIST XMLS)
 	continue()
   endif()
-  set(xml_file "${XML_DIR}/${fname}")
 
   # patch dfhack structures with our filters
   if (EXISTS "${XML_PATCH_DIR}/${fname}")
  	message(STATUS "Patching xml structure ${fname}")
 	execute_process(COMMAND mkdir -p ${XML_BUILD_DIR}) 
 	set(tmp_xml_file "${XML_BUILD_DIR}/${fname}.tmp")
-	execute_process(
+	add_custom_command(
+	  OUTPUT ${tmp_xml_file}
   	  COMMAND ${PYTHON_EXECUTABLE} ${MERGE}
-  	  ${xml_file} "${XML_PATCH_DIR}/${fname}"
+  	  ${xml_file} "${XML_PATCH_DIR}/${fname}" > ${tmp_xml_file}
 	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  	  OUTPUT_FILE ${tmp_xml_file}
-    )
+	  MAIN_DEPENDENCY ${MERGE}
+	  COMMENT "Patching xml structure ${fname}"
+	  DEPENDS ${XML_PATCH_DIR}/${fname}
+	)
   else()
     set(tmp_xml_file "${xml_file}")
   endif()
+
+  # generate .dag file
+  set(dagfile ${XML_BUILD_DIR}/${fname}.dag)
+  add_custom_command(
+	OUTPUT ${dagfile}
+	COMMAND ${DEPENDS} ${tmp_xml_file} --plain --separator=';' > ${dagfile}
+	COMMENT "Generating dependencies graph for ${fname}"
+	DEPENDS ${DEPENDS} ${tmp_xml_file}
+  )
+  add_custom_target(${fname}.dag DEPENDS ${dagfile})
+  add_dependencies(dag_all ${fname}.dag)
 
   # identify types in each xml file of df-structures  
   execute_process(
@@ -132,6 +167,16 @@ foreach (diff_file ${structures})
     
 endforeach()
 
+# generate global .dag file
+set(dagfile ${XML_BUILD_DIR}/df-structures.dag)
+add_custom_command(
+  OUTPUT ${dagfile}
+  COMMAND ${DAG} ${XML_BUILD_DIR}/*.dag > ${dagfile}
+  COMMENT "Generating global dependencies graph"
+  DEPENDS ${DAG} ${XML_BUILD_DIR}/*.dag
+)
+add_custom_target(df-structures.dag DEPENDS dag_all)
+
 # protobuf code for generated .proto
 string(REPLACE ".proto" ".pb.cc" proto_sources "${PLUGIN_PROTOS}")
 string(REPLACE ".proto" ".pb.h" proto_headers "${PLUGIN_PROTOS}")
@@ -180,5 +225,5 @@ dfhack_plugin(RemoteLegends
   LINK_LIBRARIES protobuf-lite ${PROJECT_LIBS}
   COMPILE_FLAGS_MSVC "/FI\"Export.h\""
   COMPILE_FLAGS_GCC "-include Export.h -Wno-misleading-indentation"
-  DEPENDS convert_all proto_all xml_all
+  DEPENDS convert_all proto_all xml_all df-structures.dag
 )

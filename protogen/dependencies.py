@@ -10,7 +10,14 @@ import networkx as nx
 from antlr4 import *
 from parser.DfLexer import DfLexer
 from parser.DfParser import DfParser
+from antlr4.error.ErrorListener import ErrorListener
 from parser.DfParserVisitor import DfParserVisitor
+
+
+class ThrowingErrorListener(ErrorListener):
+   def syntaxError(self, recognizer, offendingSymbol, line, charPositionInLine, msg, e):
+      raise Exception("line %d:%d %s" % (line, charPositionInLine, msg))
+
 
 class DependenciesVisitor(DfParserVisitor):
 
@@ -102,6 +109,7 @@ def main():
             lexer = DfLexer(input_stream)
             stream = CommonTokenStream(lexer)
             parser = DfParser(stream)
+            parser.addErrorListener(ThrowingErrorListener())
             tree = parser.datadef()
             visitor = DependenciesVisitor()
             deps = visitor.visitDatadef(tree)
