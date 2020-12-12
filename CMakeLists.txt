@@ -15,7 +15,7 @@ set(XML_PATCH_DIR "${CMAKE_CURRENT_SOURCE_DIR}/xml")
 
 set(XML_BUILD_DIR     "${CMAKE_CURRENT_BINARY_DIR}/xml")
 set(PROTO_BUILD_DIR   "${CMAKE_CURRENT_BINARY_DIR}/proto")
-set(INCLUDE_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
+set(HEADER_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}/include")
 set(SOURCE_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}/src")
 
 set(ANTLR4   "/usr/bin/antlr4")
@@ -41,7 +41,7 @@ set(TYPES "biome_type;coord2d;coord2d_path;feature;feature_alteration;feature_in
 
 # source files of the generated types
 # TODO: generate this list from EXPORTED_TYPES using dag.py --sources
-set(XMLS "df.language.xml;df.map.xml;df.version.xml;df.viewscreen.xml;df.world-data.xml")
+set(XMLS "df.language.xml;df.map.xml;df.version.xml;df.world-data.xml")
 
 # build list of generated files
 string(REGEX REPLACE "([^;]+)" "${PROTO_BUILD_DIR}/\\1.proto" PLUGIN_PROTOS "${TYPES}")
@@ -81,18 +81,13 @@ foreach (xml_file ${structures})
 
   # patch dfhack structures with our filters
   if (EXISTS "${XML_PATCH_DIR}/${fname}")
- 	message(STATUS "Patching xml structure ${fname}")
-	execute_process(COMMAND mkdir -p ${XML_BUILD_DIR}) 
 	set(tmp_xml_file "${XML_BUILD_DIR}/${fname}.tmp")
-	add_custom_command(
-	  OUTPUT ${tmp_xml_file}
-  	  COMMAND ${PYTHON_EXECUTABLE} ${MERGE}
-  	  ${xml_file} "${XML_PATCH_DIR}/${fname}" > ${tmp_xml_file}
-	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	  MAIN_DEPENDENCY ${MERGE}
-	  COMMENT "Patching xml structure ${fname}"
-	  DEPENDS ${XML_PATCH_DIR}/${fname}
-	)
+	execute_process(COMMAND mkdir -p ${XML_BUILD_DIR})
+	execute_process(
+  	  COMMAND ${PYTHON_EXECUTABLE} ${MERGE} ${xml_file} "${XML_PATCH_DIR}/${fname}"
+  	  OUTPUT_FILE ${tmp_xml_file}
+  	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	  )
   else()
     set(tmp_xml_file "${xml_file}")
   endif()
@@ -103,51 +98,47 @@ foreach (xml_file ${structures})
 	OUTPUT ${dagfile}
 	COMMAND ${DEPENDS} ${tmp_xml_file} --plain --separator=';' > ${dagfile}
 	COMMENT "Generating dependencies graph for ${fname}"
-	DEPENDS ${DEPENDS} ${tmp_xml_file}
+	MAIN_DEPENDENCY ${DEPENDS}
   )
   add_custom_target(${fname}.dag DEPENDS ${dagfile})
   add_dependencies(dag_all ${fname}.dag)
 
-  # identify types in each xml file of df-structures  
-  execute_process(
-  	COMMAND mkdir -p ${PROTO_BUILD_DIR}
-  	COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-  	${tmp_xml_file} ${PROTO_BUILD_DIR}
-  	--type proto
-  	--separator ";"
-  	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  	OUTPUT_VARIABLE proto_files
-  )
-  if ("${proto_files}" STREQUAL "")
-    continue()
-  endif()
-  list(LENGTH proto_files types)
-  message(STATUS "${fname}: ${types} exported types")
-  
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-  	${tmp_xml_file} ${INCLUDE_BUILD_DIR}
-  	--type h
-  	--separator ";"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE header_files
-  )
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-  	${tmp_xml_file} ${SOURCE_BUILD_DIR}
-  	--type cpp
-  	--separator ";"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE source_files
-  )
-
-  file(GLOB GENERATE_INPUT_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/*.py ${XML_DIR}/*.xslt)
+  # identify types in each xml file of df-structures
+	execute_process(
+  	  COMMAND mkdir -p ${PROTO_BUILD_DIR}
+  	  COMMAND ${PYTHON_EXECUTABLE} ${LIST}
+  	  ${tmp_xml_file} ${PROTO_BUILD_DIR}
+  	  --type proto
+  	  --separator ";"
+  	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  	  OUTPUT_VARIABLE proto_files
+	)
+	list(LENGTH proto_files types)
+	message(STATUS "${fname}: ${types} exported types")
+	
+	execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
+  	  ${tmp_xml_file} ${HEADER_BUILD_DIR}
+  	  --type h
+  	  --separator ";"
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      OUTPUT_VARIABLE header_files
+	)
+	execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
+  	  ${tmp_xml_file} ${SOURCE_BUILD_DIR}
+  	  --type cpp
+  	  --separator ";"
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      OUTPUT_VARIABLE source_files
+    )
   
   # generate code from the .xml
+  file(GLOB GENERATE_INPUT_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/*.py ${XML_DIR}/*.xslt)
   add_custom_command(
     OUTPUT ${proto_files} ${header_files} ${source_files}
     COMMAND ${PYTHON_EXECUTABLE} ${PROTOGEN}
     --proto_out ${PROTO_BUILD_DIR}
     --cpp_out ${SOURCE_BUILD_DIR}
-    --h_out ${INCLUDE_BUILD_DIR}
+    --h_out ${HEADER_BUILD_DIR}
 	--transform ${XML_DIR}/lower-1.xslt
 	--transform ${XML_DIR}/lower-2.xslt
   	--quiet
@@ -212,7 +203,7 @@ endif()
 #
 include_directories(${Protobuf_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(${INCLUDE_BUILD_DIR})
+include_directories(${HEADER_BUILD_DIR})
 include_directories(${PROTO_BUILD_DIR})
 include_directories(${dfhack_SOURCE_DIR}/library/include)
 
