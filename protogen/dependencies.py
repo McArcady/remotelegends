@@ -15,8 +15,8 @@ from parser.DfParserVisitor import DfParserVisitor
 
 
 class ThrowingErrorListener(ErrorListener):
-   def syntaxError(self, recognizer, offendingSymbol, line, charPositionInLine, msg, e):
-      raise Exception("line %d:%d %s" % (line, charPositionInLine, msg))
+    def syntaxError(self, recognizer, offendingSymbol, line, charPositionInLine, msg, e):
+        raise Exception("line %d:%d %s" % (line, charPositionInLine, msg))
 
 
 class DependenciesVisitor(DfParserVisitor):
@@ -69,11 +69,18 @@ class DependenciesVisitor(DfParserVisitor):
 
     def visitField(self, ctx):
         for attr in ctx.attribute():
-            # ignore fields with attribute: export='false'
+            # find type of fields with attribute: export='false'
             # or attribute: export-as
-            if (str(attr.ATTRNAME())=='export' and attr.STRING().getText()[1:-1]=='false') or (str(attr.ATTRNAME())=='export-as'):
-                return []
-        return self.visitChildren(ctx)
+            name = str(attr.ATTRNAME())
+            value = attr.STRING().getText()[1:-1]
+            if name=='export-as':
+                return
+            if name=='export' and value=='true':
+                # return type-name of this field
+                for attr in ctx.attribute():
+                    tname = DependenciesVisitor.readAttributeType(attr)
+                    if tname:
+                        return [tname]
 
     def visitItem(self, ctx):
         # ignore children of enum items
@@ -83,17 +90,23 @@ class DependenciesVisitor(DfParserVisitor):
         # ignore children of bitfield flags
         return []
 
-    def visitAttribute(self, ctx:DfParser.AttributeContext):
+    @staticmethod
+    def readAttributeType(ctx):
         name = str(ctx.ATTRNAME())
-        if name=='type-name' or name=='pointer-type':
+        if name in ['type-name', 'pointer-type', 'inherits-from']:
             tname = ctx.STRING().getText()[1:-1]
-            if tname not in self.PRIMTYPES:
-                return [tname]
+            if tname not in DependenciesVisitor.PRIMTYPES:
+                return tname
+        
+    def visitAttribute(self, ctx:DfParser.AttributeContext):
+        tname = DependenciesVisitor.readAttributeType(ctx)
+        return [tname] if tname else []
+
     
 def main():
 
     # parse args
-    parser = argparse.ArgumentParser(description='Build graph of dependencies between types in DFHack structure files.')
+    parser = argparse.ArgumentParser(description='Read DFHack structure files and build graph of dependencies between types.')
     parser.add_argument('inputs', metavar='INFILE', type=str, nargs='+',
                         help='DFHack structure XML file')
     parser.add_argument('--plain', action='store_true', default=False,

@@ -4,10 +4,11 @@
 # $ pip install networkx
 
 import sys
+import re
 import argparse
 import traceback
 import networkx as nx
-    
+
 def main():
 
     # parse args
@@ -18,11 +19,17 @@ def main():
                         help='raw output (default=false)')
     parser.add_argument('--separator', '-s', metavar='STR', type=str,
                         default=' ', help='separator between elements of lists (default=" ")')
+    parser.add_argument('-1', dest='one', action='store_true', default=False,
+                        help='output 1 element per line')
+    parser.add_argument('--exclude', metavar='REGEX', type=str,
+                        help='exclude nodes matching REGEX from the result')
     group = parser.add_argument_group('commands').add_mutually_exclusive_group()
     group.add_argument('--ancestors', metavar='TYPE', type=str, nargs='+', default=[],
                         help='list all ancestors of given nodes')
     group.add_argument('--sources', metavar='TYPE', type=str, nargs='*', default=None,
                         help='list all sources of given nodes (default: all nodes)')
+    group.add_argument('--path', metavar='SOURCE TARGET', type=str, nargs='*', default=[],
+                        help='list all paths from SOURCE to TARGET')
     args = parser.parse_args()
 
     # read graph
@@ -56,11 +63,10 @@ def main():
             for t in args.ancestors:
                 deps.update([t])
                 deps.update(nx.ancestors(G, t))
-            print('%s' % (args.separator.join(list(deps))))
-            exit(0)
+            result = list(deps)
 
         # list all sources of the given nodes
-        if args.sources is not None:
+        elif args.sources is not None:
             sources = set()
             nodes = set()
             for n in args.sources:
@@ -72,9 +78,25 @@ def main():
             for node, degree in list(view):
                 if degree == 0:
                     sources.update([node])
-            if sources:
-                print(args.separator.join(list(sources)))
+            result = list(sources)
+
+        # list all paths from 'source' to 'target'
+        elif args.path:
+            if len(args.path) != 2:
+                parser.print_help()
+                exit(1)
+            result = ''
+            for path in nx.all_simple_paths(G, source=args.path[0], target=args.path[1]):
+                print(','.join([n for n in path]) + '\n')
             exit(0)
+
+        if args.exclude:
+            result = [r for r in result if not re.match(args.exclude, r)]
+        if args.one:
+            args.separator = '\n'
+        if result:
+            print(args.separator.join(result), end='')
+        exit(0)
     
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
