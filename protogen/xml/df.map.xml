@@ -2,6 +2,8 @@
     <struct-type type-name='coord2d_path' export='true'/>
     <struct-type type-name='coord2d' export='true'/>
     <struct-type type-name='coord' export='true'/>
+
+    <class-type type-name='world_construction' export='true'/>
 </data-definition>
 
 <!--

@@ -16,7 +16,6 @@
 
 #include "df/world.h"
 #include "df/world_data.h"
-#include "df/world_landmass.h"
 
 using namespace DFHack;
 using namespace df::enums;

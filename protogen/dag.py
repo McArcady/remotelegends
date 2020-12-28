@@ -25,10 +25,12 @@ def main():
                         help='exclude nodes matching REGEX from the result')
     group = parser.add_argument_group('commands').add_mutually_exclusive_group()
     group.add_argument('--ancestors', metavar='TYPE', type=str, nargs='+', default=[],
-                        help='list all ancestors of given nodes')
+                        help='list all ancestors of given nodes, including themselves')
+    group.add_argument('--successors', metavar='TYPE', type=str, nargs='+', default=[],
+                        help='list direct successors of given nodes')
     group.add_argument('--sources', metavar='TYPE', type=str, nargs='*', default=None,
                         help='list all sources of given nodes (default: all nodes)')
-    group.add_argument('--path', metavar='SOURCE TARGET', type=str, nargs='*', default=[],
+    group.add_argument('--path', metavar='SOURCE TARGET', type=str, nargs='2', default=[],
                         help='list all paths from SOURCE to TARGET')
     args = parser.parse_args()
 
@@ -36,6 +38,7 @@ def main():
     G = nx.DiGraph()
     for f in args.inputs:
         try:
+            fp = None
             with open(f) as fp:
                 line = fp.readline()
                 while line:
@@ -51,10 +54,11 @@ def main():
             traceback.print_exc(file=sys.stderr)
             exit(1)
         finally:
-            fp.close()
+            if fp:
+                fp.close()
 
     if not args.plain:
-        print('%d file(s), read %d nodes and %d edges' % (len(args.inputs), G.number_of_nodes(), G.number_of_edges()))
+        print('read %d file(s), %d nodes and %d edges' % (len(args.inputs), G.number_of_nodes(), G.number_of_edges()))
 
     try:
         # list all ancestors of the given nodes
@@ -63,6 +67,13 @@ def main():
             for t in args.ancestors:
                 deps.update([t])
                 deps.update(nx.ancestors(G, t))
+            result = list(deps)
+
+        # list all direct successors of the given nodes
+        elif args.successors:
+            deps = set()
+            for t in args.successors:
+                deps.update(G.successors(t))
             result = list(deps)
 
         # list all sources of the given nodes

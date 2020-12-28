@@ -1,0 +1,11 @@
+<data-definition>
+    <struct-type type-name='artifact_record' export='true'/>
+    <struct-type type-name='entity_population' export='true'/>
+</data-definition>
+
+<!--
+Local Variables:
+indent-tabs-mode: nil
+nxml-child-indent: 4
+End:
+-->

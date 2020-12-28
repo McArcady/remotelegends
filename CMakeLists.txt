@@ -9,39 +9,43 @@ endif(COMMAND cmake_policy)
 #
 # constants
 #
-set(FILTER        "df.*.xml")
 set(XML_DIR       "${dfhack_SOURCE_DIR}/library/xml")
-set(XML_PATCH_DIR "${CMAKE_CURRENT_SOURCE_DIR}/xml")
+set(XML_PATCH_DIR "${CMAKE_CURRENT_SOURCE_DIR}/protogen/xml")
 
-set(XML_BUILD_DIR     "${CMAKE_CURRENT_BINARY_DIR}/xml")
+set(XML_BUILD_DIR     "${CMAKE_CURRENT_BINARY_DIR}/protogen/xml")
 set(PROTO_BUILD_DIR   "${CMAKE_CURRENT_BINARY_DIR}/proto")
 set(HEADER_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}/include")
 set(SOURCE_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}/src")
 
-set(ANTLR4   "/usr/bin/antlr4")
-set(DEPENDS  "${CMAKE_CURRENT_SOURCE_DIR}/protogen/dependencies.py")
 set(DAG      "${CMAKE_CURRENT_SOURCE_DIR}/protogen/dag.py")
+set(MERGE    "${CMAKE_CURRENT_SOURCE_DIR}/protogen/merge.py")
 set(PROTOGEN "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/protogen.py")
-set(MERGE    "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/merge.py")
 set(LIST     "${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/list.py")
 
-# target to generate all proto files and conversion code (needed since pb dependencies cannot be handled precisely)
-add_custom_target(xml_all)
-add_custom_target(dag_all)
+# target to generate all proto files and conversion code
 add_custom_target(convert_all)
 
+add_subdirectory(protogen)
+
 # types to be exported
-#set(EXPORTED_TYPES world_landmass world_region world_mountain_peak world_river world_underground_region)
+set(EXPORTED_TYPES world_landmass world_region world_mountain_peak world_river world_underground_region creature_raw world_site world_construction artifact_record historical_figure identity entity_population historical_entity history_event history_event_collection history_era poetic_form musical_form dance_form written_content)
 
-# result of
-# $ ./protogen/dependencies.py ../df-structures/df.*.xml  --type   world_landmass world_region world_mountain_peak world_river world_underground_region --separator=';'
-# TODO: generate this list from EXPORTED_TYPES using dag.py --ancestors
-# TODO: export proto files corresponding to theses types only
-set(TYPES "biome_type;coord2d;coord2d_path;feature;feature_alteration;feature_init;language_name;language_name_type;layer_type;part_of_speech;save_version;world_landmass;world_mountain_peak;world_population;world_population_type;world_region;world_region_type;world_river;world_underground_region")
-
-# source files of the generated types
-# TODO: generate this list from EXPORTED_TYPES using dag.py --sources
-set(XMLS "df.language.xml;df.map.xml;df.version.xml;df.world-data.xml")
+# generate list of types to convert
+execute_process(
+  COMMAND ${DAG} ${XML_PATCH_DIR}/df-structures.dag
+  --ancestors ${EXPORTED_TYPES} --plain --exclude=.*df\..*\.xml[.tmp]* --separator=\;
+  OUTPUT_VARIABLE TYPES
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+# generate list of xml files the define the types to convert
+execute_process(
+  COMMAND ${DAG} ${XML_PATCH_DIR}/df-structures.dag
+  --sources ${EXPORTED_TYPES} --plain --separator=\;
+  OUTPUT_VARIABLE XMLS
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+#message(STATUS "Exported types: ${TYPES}")
+#message(STATUS "Compiled structures: ${XMLS}")
 
 # build list of generated files
 string(REGEX REPLACE "([^;]+)" "${PROTO_BUILD_DIR}/\\1.proto" PLUGIN_PROTOS "${TYPES}")
@@ -50,86 +54,27 @@ list(APPEND PROJECT_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/remotelegends.cpp")
 
 
 #
-# build grammar parser
-#
-set(PARSER_SRCS "DfLexer.interp;DfLexer.py;DfLexer.tokens;DfParser.interp;DfParser.py;DfParser.tokens;DfParserVisitor.py;__init__.py")
-list(TRANSFORM PARSER_SRCS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/protogen/parser/")
-set(GRAMMAR_SRCS "DfLexer.g4;DfParser.g4")
-list(TRANSFORM GRAMMAR_SRCS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/protogen/")
-add_custom_command(
-  OUTPUT ${PARSER_SRCS} ${DEPENDS}
-  COMMAND mkdir -p parser
-  COMMAND ${ANTLR4} -o parser -visitor -Dlanguage=Python3 DfLexer.g4 DfParser.g4
-  COMMAND touch parser/__init__.py
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/protogen
-  MAIN_DEPENDENCY ${ANTLR4}
-  COMMENT "Generating df-structures parser"
-  DEPENDS ${GRAMMAR_SRCS}
-)
-
-
-#
 # identify global types dependencies
 #
-file(GLOB structures ${XML_DIR}/${FILTER})
-foreach (xml_file ${structures})
+foreach (xml_file ${XMLS})
 
   get_filename_component(fname ${xml_file} NAME)
-  if (NOT ${fname} IN_LIST XMLS)
-	continue()
-  endif()
 
-  # patch dfhack structures with our filters
-  if (EXISTS "${XML_PATCH_DIR}/${fname}")
-	set(tmp_xml_file "${XML_BUILD_DIR}/${fname}.tmp")
-	execute_process(COMMAND mkdir -p ${XML_BUILD_DIR})
-	execute_process(
-  	  COMMAND ${PYTHON_EXECUTABLE} ${MERGE} ${xml_file} "${XML_PATCH_DIR}/${fname}"
-  	  OUTPUT_FILE ${tmp_xml_file}
-  	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	  )
-  else()
-    set(tmp_xml_file "${xml_file}")
-  endif()
-
-  # generate .dag file
-  set(dagfile ${XML_BUILD_DIR}/${fname}.dag)
-  add_custom_command(
-	OUTPUT ${dagfile}
-	COMMAND ${DEPENDS} ${tmp_xml_file} --plain --separator=';' > ${dagfile}
-	COMMENT "Generating dependencies graph for ${fname}"
-	MAIN_DEPENDENCY ${DEPENDS}
-  )
-  add_custom_target(${fname}.dag DEPENDS ${dagfile})
-  add_dependencies(dag_all ${fname}.dag)
-
-  # identify types in each xml file of df-structures
-	execute_process(
-  	  COMMAND mkdir -p ${PROTO_BUILD_DIR}
-  	  COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-  	  ${tmp_xml_file} ${PROTO_BUILD_DIR}
-  	  --type proto
-  	  --separator ";"
-  	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  	  OUTPUT_VARIABLE proto_files
+  # identify types for this xml file
+  # (use temporarly ":" instead of ";" for command to succeed)
+  execute_process(
+  	COMMAND ${DAG} ${XML_PATCH_DIR}/df-structures.dag
+	--successors ${xml_file} --plain --separator=:
+  	OUTPUT_VARIABLE prefixes
+  	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
-	list(LENGTH proto_files types)
-	message(STATUS "${fname}: ${types} exported types")
-	
-	execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-  	  ${tmp_xml_file} ${HEADER_BUILD_DIR}
-  	  --type h
-  	  --separator ";"
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      OUTPUT_VARIABLE header_files
-	)
-	execute_process(COMMAND ${PYTHON_EXECUTABLE} ${LIST}
-  	  ${tmp_xml_file} ${SOURCE_BUILD_DIR}
-  	  --type cpp
-  	  --separator ";"
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      OUTPUT_VARIABLE source_files
-    )
+  string(REPLACE ":" "\;" prefixes ${prefixes})
+
+  string(REGEX REPLACE "([^;]+)" "${PROTO_BUILD_DIR}/\\1.proto" proto_files ${prefixes})
+  string(REGEX REPLACE "([^;]+)" "${HEADER_BUILD_DIR}/\\1.h" header_files ${prefixes})
+  string(REGEX REPLACE "([^;]+)" "${SOURCE_BUILD_DIR}/\\1.cpp" source_files ${prefixes})
+  set_source_files_properties(${proto_files} ${header_files} ${source_files} PROPERTIES GENERATED TRUE)
+  set_source_files_properties(${header_files} PROPERTIES HEADER_FILE_ONLY TRUE)
   
   # generate code from the .xml
   file(GLOB GENERATE_INPUT_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/protogen.legacy/*.py ${XML_DIR}/*.xslt)
@@ -142,31 +87,22 @@ foreach (xml_file ${structures})
 	--transform ${XML_DIR}/lower-1.xslt
 	--transform ${XML_DIR}/lower-2.xslt
   	--quiet
-	# TODO: no need for exceptions.conf ?
+	# TODO: get rid of exceptions.conf ?
   	--exceptions=${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
-    ${tmp_xml_file}
+    ${xml_file}
     MAIN_DEPENDENCY ${PROTOGEN}
     COMMENT "Generating protobuf messages and conversion code for ${fname}"
-    DEPENDS ${GENERATE_INPUT_SCRIPTS} ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
+    DEPENDS ${xml_file} ${GENERATE_INPUT_SCRIPTS} ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.conf
   )
 
   # define target for all products of this xml file
   string(REGEX REPLACE "/" "_" struct_target ${fname})
   string(REGEX REPLACE "\\." "_" struct_target ${struct_target})
   add_custom_target(${struct_target} DEPENDS ${proto_files} ${header_files} ${source_files})
-  add_dependencies(xml_all ${struct_target})
+  add_dependencies(convert_all ${struct_target})
     
 endforeach()
 
-# generate global .dag file
-set(dagfile ${XML_BUILD_DIR}/df-structures.dag)
-add_custom_command(
-  OUTPUT ${dagfile}
-  COMMAND ${DAG} ${XML_BUILD_DIR}/*.dag > ${dagfile}
-  COMMENT "Generating global dependencies graph"
-  DEPENDS ${DAG} ${XML_BUILD_DIR}/*.dag
-)
-add_custom_target(df-structures.dag DEPENDS dag_all)
 
 # protobuf code for generated .proto
 string(REPLACE ".proto" ".pb.cc" proto_sources "${PLUGIN_PROTOS}")
@@ -187,7 +123,7 @@ add_custom_command(
   --cpp_out=${PROTO_BUILD_DIR}
   ${PLUGIN_PROTOS}
   COMMENT "Generating protobuf code for ${PLUGIN_PROTOS}"
-  DEPENDS protoc-bin ${PLUGIN_PROTOS}
+  DEPENDS protoc-bin 
 )
 add_custom_target(proto_all DEPENDS ${PLUGIN_PROTO_SRCS})
 
@@ -216,5 +152,5 @@ dfhack_plugin(RemoteLegends
   LINK_LIBRARIES protobuf-lite ${PROJECT_LIBS}
   COMPILE_FLAGS_MSVC "/FI\"Export.h\""
   COMPILE_FLAGS_GCC "-include Export.h -Wno-misleading-indentation"
-  DEPENDS convert_all proto_all xml_all df-structures.dag
+  DEPENDS convert_all proto_all df-structures.dag
 )
