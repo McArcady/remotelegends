@@ -19,7 +19,7 @@ class TestCppRenderer(unittest.TestCase):
         pass
     
     def setUp(self):
-        self.sut = CppRenderer('ns', 'dfproto', 'DFProto')
+        self.sut = CppRenderer('ns', 'dfproto', 'DFProto').set_comment_ignored(True).set_ignore_no_export(False)
         self.maxDiff = None
 
     @classmethod

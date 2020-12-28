@@ -346,9 +346,10 @@ class ProtoRenderer(AbstractRenderer):
         if not ctx:
             ctx = Context()
         field = self.render_field_impl(xml, ctx)
-        if not field.rstrip().endswith('*/') and xml.get('comment'):
-            comment = self.ident(xml) + self.append_comment(xml)
-            return self.ident(xml, ctx.ident) + '%s%s' % (comment, field)
+        # FIXME: enable this comment only if field is exported
+        # if not field.rstrip().endswith('*/') and xml.get('comment'):
+        #     comment = self.ident(xml) + self.append_comment(xml)
+        #     return self.ident(xml, ctx.ident) + '%s%s' % (comment, field)
         return field
 
     def render_type(self, xml):

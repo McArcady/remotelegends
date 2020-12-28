@@ -86,8 +86,7 @@ def main():
         for item in xml.getroot():
             try:
                 export = item.get('export')
-                if export=='false' or 'global-type' not in item.tag:
-                    print(item.tag, export)
+                if export!='true' or 'global-type' not in item.tag:
                     if not args.quiet:
                         sys.stdout.write('skipped type '+item.get('type-name') + '\n')
                     continue

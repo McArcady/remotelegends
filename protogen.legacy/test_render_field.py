@@ -10,8 +10,8 @@ from proto_renderer import ProtoRenderer
 class TestRenderField(unittest.TestCase):
             
     def setUp(self):
-        self.sut_proto = ProtoRenderer('ns')
-        self.sut_cpp = CppRenderer('ns', 'dfproto', 'DFProto')
+        self.sut_proto = ProtoRenderer('ns').set_comment_ignored(True).set_ignore_no_export(False)
+        self.sut_cpp = CppRenderer('ns', 'dfproto', 'DFProto').set_comment_ignored(True).set_ignore_no_export(False)
         self.maxDiff=  None
 
     def assertStructEqual(self, str1, str2):

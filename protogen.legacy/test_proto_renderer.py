@@ -21,7 +21,7 @@ class TestProtoRenderer(unittest.TestCase):
             fil.write('syntax = "proto2";\n')
             
     def setUp(self):
-        self.sut = ProtoRenderer('ns')
+        self.sut = ProtoRenderer('ns').set_comment_ignored(True).set_ignore_no_export(False)
 
     def tearDown(self):
         with open(OUTPUT_FNAME, 'a') as fil:

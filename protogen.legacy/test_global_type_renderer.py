@@ -88,6 +88,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         # init SUT
         root = etree.fromstring(self.XML)
         self.sut = GlobalTypeRenderer(root[0], 'ns')
+        self.sut.set_comment_ignored(True).set_ignore_no_export(False)
         self.sut.set_exceptions_file(self.delete_me[0])
 
     def tearDown(self):

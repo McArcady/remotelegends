@@ -13,6 +13,8 @@ class GlobalTypeRenderer:
         self.exceptions_index = []
         self.exceptions_enum = []
         self.exceptions_depends = []
+        self.ignore_no_export = True
+        self.comment_ignored = False
         self.xml = xml
         assert self.xml.tag == '{%s}global-type' % (self.ns)
 
@@ -37,6 +39,14 @@ class GlobalTypeRenderer:
                 elif tokens[0] == 'depends':
                     self.exceptions_depends.append((tokens[1], tokens[2]))
     
+    def set_ignore_no_export(self, b):
+        self.ignore_no_export = b
+        return self
+
+    def set_comment_ignored(self, b):
+        self.comment_ignored = b
+        return self
+    
     def get_type_name(self):
         tname = self.xml.get('type-name')
         if not tname:
@@ -52,6 +62,7 @@ class GlobalTypeRenderer:
 
     def render_proto(self):
         rdr = ProtoRenderer(self.ns, self.proto_ns).set_version(self.version)
+        rdr.set_comment_ignored(self.comment_ignored).set_ignore_no_export(self.ignore_no_export)
         for tokens in self.exceptions_rename:
             rdr.add_exception_rename(tokens[1], tokens[2])
         for tokens in self.exceptions_ignore:
@@ -70,6 +81,7 @@ class GlobalTypeRenderer:
 
     def render_cpp(self):
         rdr = CppRenderer(self.ns, self.proto_ns, 'DFProto')
+        rdr.set_comment_ignored(self.comment_ignored).set_ignore_no_export(self.ignore_no_export)
         for tokens in self.exceptions_rename:
             rdr.add_exception_rename(tokens[1], tokens[2])
         for tokens in self.exceptions_index:

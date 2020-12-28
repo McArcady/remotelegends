@@ -17,12 +17,26 @@ class AbstractRenderer:
         self.exceptions_ignore = []
         self.exceptions_index = []
         self.exceptions_enum = []
+        # ignore fields with no attribute 'export' ?
+        self.ignore_no_export = True
+        # generate comment for ignored fields ?
+        self.comment_ignored = False
+
+    def set_ignore_no_export(self, b):
+        self.ignore_no_export = b
+        return self
+
+    def set_comment_ignored(self, b):
+        self.comment_ignored = b
+        return self
 
     def copy(self, target):
         target.exceptions_ignore = self.exceptions_ignore
         target.exceptions_rename = self.exceptions_rename
         target.exceptions_index = self.exceptions_index
         target.exceptions_enum = self.exceptions_enum
+        target.ignore_no_export = self.ignore_no_export
+        target.comment_ignored = self.comment_ignored
 
     TYPES = defaultdict(lambda: None, {
         k:v for k,v in {
@@ -156,8 +170,16 @@ class AbstractRenderer:
         ignore = False
         name = xml.get('name')
         export = xml.get('export')
-        if (name and name.startswith('unk_')) or (export and export == 'false'):
+        export_as = xml.get('export-as')
+        if export_as:
+            # convert type
+            return self.render_field_conversion(xml, ctx)
+        elif export==None and self.ignore_no_export:
             ignore = True
+        elif (name and name.startswith('unk_')) or (export and export == 'false'):
+            ignore = True
+
+        # if (name and name.startswith('unk_')) or export!='true':
         else:
             for k in self.exceptions_ignore:
                 found = xml.getroottree().xpath(k, namespaces={
@@ -169,11 +191,10 @@ class AbstractRenderer:
                     break
         if ignore:
             # ignore this field
-            return self.ident(xml) + '/* ignored field %s */\n' % (name or 'anon')
-        export_as = xml.get('export-as')
-        if export_as:
-            # convert type
-            return self.render_field_conversion(xml, ctx)
+            if self.comment_ignored:
+                return self.ident(xml) + '/* ignored field %s */\n' % (name or 'anon')
+            else:
+                return ''
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
             return self.render_field_compound(xml, ctx)

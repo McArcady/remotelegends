@@ -23,8 +23,8 @@ class TestRenderType(unittest.TestCase):
             fil.write('')
     
     def setUp(self):
-        self.sut_proto = ProtoRenderer('ns')
-        self.sut_cpp = CppRenderer('ns', 'dfproto', 'DFProto')
+        self.sut_proto = ProtoRenderer('ns').set_comment_ignored(True).set_ignore_no_export(False)
+        self.sut_cpp = CppRenderer('ns', 'dfproto', 'DFProto').set_comment_ignored(True).set_ignore_no_export(False)
         self.maxDiff = None
 
     def tearDown(self):
