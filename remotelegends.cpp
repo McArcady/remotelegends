@@ -45,7 +45,7 @@ command_result check_list_request(color_ostream &stream, const RemoteLegends::My
     }
 	if (!in) {
         stream.printerr("Missing parameters\n");
-        return CR_WRONG_USAGE;		
+        return CR_WRONG_USAGE;
 	}
 	int start = in->has_list_start() ? in->list_start() : 0;
 	int end = in->has_list_end() ? in->list_end() : max_end-1;
@@ -59,11 +59,10 @@ command_result check_list_request(color_ostream &stream, const RemoteLegends::My
 }
 #define METHOD_GET_LIST(UTYPE, TYPE, VNAME)								\
 command_result Get##UTYPE##List(color_ostream &stream, const RemoteLegends::MyListRequest *in, RemoteLegends::UTYPE##List *out) { \
-    df::world_data * data = df::global::world->world_data;				\
 	int start, end;														\
-	command_result rc = check_list_request(stream, in, data->VNAME.size(), &start, &end); \
+	command_result rc = check_list_request(stream, in, VNAME.size(), &start, &end); \
 	if (rc)	{ return rc; }												\
-    for (auto elt : std::vector<df::TYPE*>(&data->VNAME[start], &data->VNAME[end+1])) {	\
+    for (auto elt : std::vector<df::TYPE*>(&VNAME[start], &VNAME[end+1])) {	\
 		DFProto::describe_##TYPE(out->add_list(), elt);					\
     }																	\
     return CR_OK;														\

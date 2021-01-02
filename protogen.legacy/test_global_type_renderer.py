@@ -12,7 +12,7 @@ class TestGlobalTypeRenderer(unittest.TestCase):
     def setUp(self):
         self.XML = """
         <ld:data-definition xmlns:ld="ns">
-        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="history_event_reason_info">
+        <ld:global-type ld:meta="struct-type" ld:level="0" type-name="history_event_reason_info" instance-vector="$global.world.world_data.reasons">
           <ld:field ld:subtype="enum" name="type" type-name="history_event_reason" base-type="int32_t" ld:level="1" ld:meta="global"/>
           <ld:field name="data" is-union="true" init-value="-1" ld:level="1" ld:meta="compound" ld:typedef-name="T_data" ld:in-union="true">
             <ld:field name="glorify_hf" ref-target="historical_figure" ld:level="2" ld:meta="number" ld:subtype="int32_t" ld:bits="32"/>
@@ -127,6 +127,8 @@ class TestGlobalTypeRenderer(unittest.TestCase):
         # check and compile cpp
         with open(fnames[1], 'r') as fil:
             self.assertStructEqual(fil.read(), self.CPP)
+        # check global vector
+        self.assertEqual(self.sut.get_instance_vector(), '$global.world.world_data.reasons')
 
     def test_ignore_type(self):
         self.XML = """

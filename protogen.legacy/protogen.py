@@ -18,6 +18,19 @@ COLOR_OKBLUE = '\033[94m'
 COLOR_FAIL = '\033[91m'
 COLOR_ENDC = '\033[0m'
 
+def snakeToCamelCase(string):
+    string = string[0].upper() + string[1:]
+    return re.sub(
+        r'(?P<first>_[a-z])',
+        lambda m: m.group('first')[1:].upper(),
+        string
+     )
+
+def luaToCpp(string):
+    string = string.replace('$global.', 'df::global::')
+    string = string.replace('.', '->', 1)
+    string = string.replace('world_data.', 'world_data->')
+    return string
 
 def main():
     
@@ -34,6 +47,12 @@ def main():
     parser.add_argument('--h_out', metavar='HDIR', type=str,
                         default='./protogen',
                         help='output directory for c++ headers (default=./protogen)')
+    parser.add_argument('--methods', metavar='FILE', type=str,
+                        default='./protogen/methods.inc',
+                        help='generate macro file for global instance vectors (default=./protogen/methods.inc)')
+    parser.add_argument('--grpc', metavar='FILE', type=str,
+                        default='./protogen/grpc.proto',
+                        help='generate protobuf procedures for querying instances (default=./protogen/grpc.proto)')
     parser.add_argument('--version', '-v', metavar='2|3', type=int,
                         default='2', help='protobuf version (default=2)')
     parser.add_argument('--quiet', '-q', action='store_true',
@@ -65,6 +84,7 @@ def main():
     ]
     if transforms and not args.quiet:
         sys.stdout.write(COLOR_OKBLUE + 'using %s\n' % (', '.join(args.transform)) + COLOR_ENDC)
+    instance_vectors = []
     filt = indir
     if os.path.isdir(indir):
         filt = indir+'df.*.xml'
@@ -95,6 +115,9 @@ def main():
                 if args.exceptions:
                     rdr.set_exceptions_file(args.exceptions)
                 fnames = rdr.render_to_files(args.proto_out, args.cpp_out, args.h_out)
+                vector = rdr.get_instance_vector()
+                if vector:
+                    instance_vectors.append((rdr.get_type_name(), vector))
                 if not args.quiet:
                     if fnames:
                         sys.stdout.write('created %s\n' % (', '.join(fnames)))
@@ -113,6 +136,35 @@ def main():
         if rc:
             break
 
+        # macros declaring RPC methods
+        if args.methods:
+            with open(args.methods, 'w') as fp:
+                for v in instance_vectors:
+                    fp.write("""
+#ifndef DFPROTO_INCLUDED
+#include "%s.h"
+#endif
+METHOD_GET_LIST(%s, %s, %s)
+                    """ % ( v[0], snakeToCamelCase(v[0]),
+                            v[0], luaToCpp(v[1])
+                    ))
+            if not args.quiet:
+                sys.stdout.write('created %s\n' % (args.methods))
+
+        # proto types for remote procedures
+        if args.grpc:
+            with open(args.grpc, 'w') as fp:
+                for v in instance_vectors:
+                    fp.write("""
+import "%s.proto";
+message %sList {
+    repeated dfproto.%s list = 1;
+}
+                    """ % (v[0], snakeToCamelCase(v[0]), v[0])
+                    )
+            if not args.quiet:
+                sys.stdout.write('created %s\n' % (args.grpc))
+        
     sys.exit(rc)
 
 

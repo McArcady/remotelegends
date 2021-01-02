@@ -1,0 +1,8 @@
+/* THIS FILE WAS GENERATED. DO NOT EDIT. */
+package RemoteLegends;
+option optimize_for = LITE_RUNTIME;
+
+message MyListRequest {
+    optional int32 list_start = 1;
+    optional int32 list_end = 2;
+}

@@ -56,6 +56,9 @@ class GlobalTypeRenderer:
 
     def get_meta_type(self):
         return self.xml.get('{%s}meta' % (self.ns))
+
+    def get_instance_vector(self):
+        return self.xml.get('instance-vector')        
     
 
     # main renderer
