@@ -30,7 +30,7 @@ def main():
                         help='list direct successors of given nodes')
     group.add_argument('--sources', metavar='TYPE', type=str, nargs='*', default=None,
                         help='list all sources of given nodes (default: all nodes)')
-    group.add_argument('--path', metavar='SOURCE TARGET', type=str, nargs='2', default=[],
+    group.add_argument('--path', metavar='SOURCE TARGET', type=str, nargs=2, default=[],
                         help='list all paths from SOURCE to TARGET')
     args = parser.parse_args()
 
@@ -59,7 +59,8 @@ def main():
 
     if not args.plain:
         print('read %d file(s), %d nodes and %d edges' % (len(args.inputs), G.number_of_nodes(), G.number_of_edges()))
-
+    result = None
+    
     try:
         # list all ancestors of the given nodes
         if args.ancestors:
@@ -98,7 +99,7 @@ def main():
                 exit(1)
             result = ''
             for path in nx.all_simple_paths(G, source=args.path[0], target=args.path[1]):
-                print(','.join([n for n in path]) + '\n')
+                print(','.join([n for n in path]))
             exit(0)
 
         if args.exclude:
