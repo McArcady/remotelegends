@@ -47,18 +47,21 @@ file(GLOB structures ${XML_DIR}/${FILTER})
 foreach (xml_file ${structures})
 
   get_filename_component(fname ${xml_file} NAME)
+  string(REGEX REPLACE "df\.(.+)\.xml" "\\1" sname ${fname})
+#  message(STATUS ${sname})
 
   # patch dfhack structures with our filters
-  if (EXISTS "${XML_PATCH_DIR}/${fname}")
+  set(export_file "${XML_PATCH_DIR}/${sname}.export")
+  if (EXISTS ${export_file})
 	set(tmp_xml_file "${XML_BUILD_DIR}/${fname}")
 	add_custom_command(
 	  OUTPUT ${tmp_xml_file}
 	  COMMAND mkdir -p ${XML_BUILD_DIR}
-  	  COMMAND ${PYTHON_EXECUTABLE} ${MERGE} ${xml_file} "${XML_PATCH_DIR}/${fname}" > ${tmp_xml_file}
+  	  COMMAND ${PYTHON_EXECUTABLE} ${MERGE} ${xml_file} ${export_file} > ${tmp_xml_file}
   	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	  COMMENT "Patching ${fname}"
 	  MAIN_DEPENDENCY ${MERGE}
-	  DEPENDS ${xml_file} ${XML_PATCH_DIR}/${fname}
+	  DEPENDS ${xml_file} ${export_file}
 	)
     set_source_files_properties(${tmp_xml_file} PROPERTIES GENERATED TRUE)
   else()
@@ -88,4 +91,3 @@ add_custom_target(
   COMMENT "Generating global dependency graph"
   DEPENDS dag_all
 )
-set_source_files_properties(${dag_file} PROPERTIES GENERATED TRUE)

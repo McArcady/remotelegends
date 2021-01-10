@@ -31,23 +31,36 @@ add_custom_target(convert_all)
 add_subdirectory(protogen)
 
 # types to be exported
-set(EXPORTED_TYPES world_landmass world_region world_mountain_peak world_river world_underground_region creature_raw world_site world_construction artifact_record historical_figure identity entity_population historical_entity history_event history_event_collection history_era poetic_form musical_form dance_form written_content)
-
+# FIXME: missing: historical_entity 
+set(EXPORTED_TYPES
+	world_landmass world_mountain_peak world_region world_underground_region world_river
+	creature_raw world_site world_construction artifact_record historical_figure identity
+	entity_population history_event history_event_collection history_era
+	written_content poetic_form musical_form dance_form
+)
 # generate list of types to convert
 execute_process(
   COMMAND ${DAG} ${XML_PATCH_DIR}/df-structures.dag
   --ancestors ${EXPORTED_TYPES} --plain --exclude=.*df\..*\.xml[.tmp]* --separator=\;
   OUTPUT_VARIABLE TYPES
+  RESULT_VARIABLE rc
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  )
+)
+if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "Failed to generate list of exported types")
+endif()
 # generate list of xml files the define the types to convert
 execute_process(
   COMMAND ${DAG} ${XML_PATCH_DIR}/df-structures.dag
   --sources ${EXPORTED_TYPES} --plain --separator=\;
   OUTPUT_VARIABLE XMLS
+  RESULT_VARIABLE rc
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
-#message(STATUS "Exported types: ${TYPES}")
+if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "Failed to generate list of DF structures")
+endif()
+message(STATUS "Exported types: ${TYPES}")
 #message(STATUS "Compiled structures: ${XMLS}")
 
 # build list of generated files
