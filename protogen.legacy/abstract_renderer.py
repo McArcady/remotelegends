@@ -195,6 +195,10 @@ class AbstractRenderer:
                 return self.ident(xml) + '/* ignored field %s */\n' % (name or 'anon')
             else:
                 return ''
+        else:
+            # export all sub-elements
+            for sub in xml.iter():
+                sub.set('export', 'true')
         meta = xml.get(f'{self.ns}meta')
         if not meta or meta == 'compound':
             return self.render_field_compound(xml, ctx)
