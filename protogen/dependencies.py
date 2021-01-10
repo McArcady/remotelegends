@@ -56,11 +56,13 @@ class DependenciesVisitor(DfParserVisitor):
         return aggregate
     
     def visitGtype(self, ctx:DfParser.GtypeContext):
-        # visit all global types to trace all dependencies
-        # (even if they have export='false')
-        ch = self.visitChildren(ctx)
-        if ch:
-            return [ch]
+        # visit global type if it has attribute: export='true'
+        for attr in ctx.children[0].attribute():
+            name, value = self.readAttribute(attr)
+            if name=='export' and value=='true':
+                ch = self.visitChildren(ctx)
+                if ch:
+                    return [ch]
 
     def visitOther_type(self, ctx:DfParser.Other_typeContext):
         # ignore <global_object> (not a type)
@@ -69,10 +71,9 @@ class DependenciesVisitor(DfParserVisitor):
 
     def visitField(self, ctx):
         for attr in ctx.attribute():
-            # find type of fields with attribute: export='false'
-            # or attribute: export-as
-            name = str(attr.ATTRNAME())
-            value = attr.STRING().getText()[1:-1]
+            # return type of field if it has attribute: export='true'
+            # but no attribute: export-as
+            name, value = self.readAttribute(attr)
             if name=='export-as':
                 return
             if name=='export' and value=='true':
@@ -91,10 +92,14 @@ class DependenciesVisitor(DfParserVisitor):
         return []
 
     @staticmethod
-    def readAttributeType(ctx):
-        name = str(ctx.ATTRNAME())
-        if name in ['type-name', 'pointer-type', 'inherits-from']:
-            tname = ctx.STRING().getText()[1:-1]
+    def readAttribute(attr):
+        return str(attr.ATTRNAME()), attr.STRING().getText()[1:-1]
+
+    @staticmethod
+    def readAttributeType(attr):
+        name, _ = DependenciesVisitor.readAttribute(attr)
+        if name in ['type-name', 'pointer-type', 'inherits-from', 'index-enum']:
+            tname = attr.STRING().getText()[1:-1]
             if tname not in DependenciesVisitor.PRIMTYPES:
                 return tname
         

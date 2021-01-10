@@ -1,0 +1,34 @@
+world_landmass
+	name as string
+	index
+	area
+	min_x
+	max_x
+	min_y
+	max_y
+
+mountain_peak_flags
+world_mountain_peak
+	name as string
+	pos
+	flags
+	height
+
+world_region
+	name as string
+	index
+	region_coords
+	evil
+	forces
+
+world_underground_region
+	index
+	region_coords
+
+world_river
+	name as string
+	path
+	flow
+	exit_tile
+	elevation
+	end_pos

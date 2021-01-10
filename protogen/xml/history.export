@@ -1,0 +1,22 @@
+historical_figure
+	id
+	sex
+	race
+
+identity_type
+
+identity
+	id
+	name as string
+	type
+	race
+	caste
+	birth_year
+	profession
+	entity_id
+
+history_event 
+history_event_collection 
+relationship_event
+relationship_event_supplement 
+history_era

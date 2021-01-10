@@ -30,6 +30,8 @@ def main():
                         help='list direct successors of given nodes')
     group.add_argument('--sources', metavar='TYPE', type=str, nargs='*', default=None,
                         help='list all sources of given nodes (default: all nodes)')
+    group.add_argument('--sinks', action='store_true', default=False,
+                        help='list all sinks of the graph')
     group.add_argument('--path', metavar='SOURCE TARGET', type=str, nargs=2, default=[],
                         help='list all paths from SOURCE to TARGET')
     args = parser.parse_args()
@@ -76,6 +78,15 @@ def main():
             for t in args.successors:
                 deps.update(G.successors(t))
             result = list(deps)
+
+        # list all sinks
+        elif args.sinks:
+            sinks = set()
+            view = G.out_degree()
+            for node, degree in list(view):
+                if degree == 0:
+                    sinks.update([node])
+            result = list(sinks)
 
         # list all sources of the given nodes
         elif args.sources is not None:

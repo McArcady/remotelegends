@@ -1,0 +1,12 @@
+historical_entity_type
+
+historical_entity
+	type
+	id
+	name
+	race
+	type
+	relations
+	resources
+	guild_professions
+	entity_links

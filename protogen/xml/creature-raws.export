@@ -1,0 +1,6 @@
+creature_raw_flags
+
+creature_raw
+	creature_id
+	name
+	flags

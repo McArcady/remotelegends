@@ -1,0 +1,25 @@
+world_site_type
+
+abstract_building
+	id
+	type
+	name as string
+	inhabitants
+
+temple_deity_type
+temple_deity_data
+	Religion
+
+abstract_building_templest
+	deity_type
+	deity_data
+
+abstract_building_dungeonst
+	dungeon_type
+	
+world_site
+	name as string
+	civ_id
+	cur_owner_id
+	id
+	buildings

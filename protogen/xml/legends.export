@@ -1,0 +1,9 @@
+artifact_record
+	id
+	item
+
+entity_population
+	id
+	races
+	counts
+	civ_id

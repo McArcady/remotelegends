@@ -1,0 +1,8 @@
+coord2d_path
+coord2d
+
+world_construction
+	id
+	name as string
+	type
+	square_pos
