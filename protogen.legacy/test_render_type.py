@@ -482,6 +482,39 @@ class TestRenderType(unittest.TestCase):
         DFPROTO_IMPORTS = ['coord']
         self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
     
+    def test_render_type_class_with_methods(self):
+        XML = """
+        <ld:data-definition xmlns:ld="ns">
+        <ld:global-type ld:meta="class-type" ld:level="0" type-name="item">
+          <ld:field name="id" ld:level="1" ld:meta="number" ld:subtype="int16_t"/>
+          <virtual-methods>
+            <vmethod ld:level="1" ret-type="item_type" name="getType" export="true"><ret-type ld:level="2" ld:meta="global" type-name="item_type"/></vmethod>
+            <vmethod ld:level="1" ret-type="int16_t" name="getSubtype" export="true"><ret-type ld:level="2" ld:meta="number" ld:subtype="int16_t" ld:bits="16"/></vmethod>
+          </virtual-methods>
+        </ld:global-type>
+        </ld:data-definition>
+        """
+        PROTO = """
+        message item {
+          required int32 id = 1;
+          required item_type type = 2;
+          required int32 subtype = 3;
+        }
+        """
+        CPP = """
+        void DFProto::describe_item(dfproto::item* proto, df::item* dfhack) {
+          proto->set_id(dfhack->id);
+          df::item_type df_type = dfhack->getType();
+          dfproto::item_type type;
+          describe_item_type(&type, &df_type);
+          proto->set_type(type);
+          proto->set_subtype(dfhack->getSubtype());
+        }
+        """
+        IMPORTS = ['item_type']
+        DFPROTO_IMPORTS = ['item_type']
+        self.check_rendering(XML, PROTO, CPP, IMPORTS, DFPROTO_IMPORTS)
+
 
     #
     # exceptions

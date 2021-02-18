@@ -132,7 +132,7 @@ class AbstractRenderer:
         return line + '\n'
 
     
-    # struct
+    # struct / class
         
     def render_type_struct(self, xml, tname=None, ctx=None):
         if not ctx:
@@ -148,9 +148,27 @@ class AbstractRenderer:
         for item in xml.findall(f'{self.ns}field'):
             field, value = self._render_struct_field(item, value, ctx)
             out += field
+        methods = xml.find('virtual-methods')
+        if methods!=None and len(methods):
+            for method in methods.findall('vmethod'):
+                field, value = self._render_class_method(method, value, ctx)
+                out += field
         out += self._render_struct_footer(xml, ctx)
         return out
 
+    def _render_class_method(self, xml, value, ctx):
+        name = AbstractRenderer.get_name(self, xml)[0]
+        assert(name)
+        tname = xml.get('ret-type')
+        if not tname or not name.startswith('get'):
+            # method is not a regular getter
+            return '', value
+        ctx = self.create_context()
+        ctx.value = value
+        field = self.render_field(xml, ctx)
+        value += 1
+        return field, value
+    
 
     # main renderer
 
@@ -167,7 +185,7 @@ class AbstractRenderer:
         raise Exception('not supported: '+xml.tag+': meta='+str(meta))
 
     def render_field_impl(self, xml, ctx):
-        ignore = False
+        ignore = False        
         name = xml.get('name')
         export = xml.get('export')
         export_as = xml.get('export-as')
@@ -200,6 +218,8 @@ class AbstractRenderer:
             for sub in xml.iter():
                 sub.set('export', 'true')
         meta = xml.get(f'{self.ns}meta')
+        if not meta and xml.tag == 'vmethod':
+            return self.render_field_method(xml, ctx)
         if not meta or meta == 'compound':
             return self.render_field_compound(xml, ctx)
         if meta == 'primitive' or meta == 'number' or meta == 'bytes':

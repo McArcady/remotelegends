@@ -329,7 +329,7 @@ class CppRenderer(AbstractRenderer):
         return out
     
     
-    # structs
+    # structs / classes
 
     def _render_struct_header(self, xml, tname, ctx):
         return self.ident(xml) + 'void %s::describe_%s(%s::%s* proto, df::%s* dfhack) {\n' % ( self.cpp_ns, tname, self.proto_ns, tname, tname )
@@ -347,6 +347,23 @@ class CppRenderer(AbstractRenderer):
             field = ''
             value += 1
         return field, value
+
+    def render_field_method(self, xml, ctx):
+        method_name = xml.get('name')
+        assert method_name.startswith('get')
+        name = method_name[3:].lower()        
+        tname = xml.get('ret-type')
+        if self.is_primitive_type(tname):
+            out  = self.ident(xml, ctx.ident) + ' '
+            out += 'proto->set_%s(dfhack->%s());\n' % (name, method_name)
+        else:
+            self.imports.add(tname)
+            self.dfproto_imports.add(tname)
+            out  = 'df::%s df_%s = dfhack->%s();\n' % (tname, name, method_name)
+            out += 'dfproto::%s %s;\n' % (tname, name)
+            out += 'describe_%s(&%s, &df_%s);\n' % (tname, name, name)
+            out += 'proto->set_%s(%s);\n' % (name, name)
+        return out
     
     def _convert_anon_compound(self, xml, name=None):
         if not name:

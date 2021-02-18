@@ -83,6 +83,10 @@ class DependenciesVisitor(DfParserVisitor):
                     if tname:
                         return [tname]
 
+    def visitMethod(self, ctx):
+        # return type of method
+        return self.visitField(ctx)
+
     def visitItem(self, ctx):
         # ignore children of enum items
         return []
@@ -93,12 +97,12 @@ class DependenciesVisitor(DfParserVisitor):
 
     @staticmethod
     def readAttribute(attr):
-        return str(attr.ATTRNAME()), attr.STRING().getText()[1:-1]
+        return str(attr.ATTRNAME() or attr.RET_TYPE()), attr.STRING().getText()[1:-1]
 
     @staticmethod
     def readAttributeType(attr):
         name, _ = DependenciesVisitor.readAttribute(attr)
-        if name in ['type-name', 'pointer-type', 'inherits-from', 'index-enum']:
+        if name in ['type-name', 'pointer-type', 'inherits-from', 'index-enum', 'ret-type']:
             tname = attr.STRING().getText()[1:-1]
             if tname not in DependenciesVisitor.PRIMTYPES:
                 return tname

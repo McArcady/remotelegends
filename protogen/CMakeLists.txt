@@ -74,8 +74,8 @@ foreach (xml_file ${structures})
 	OUTPUT ${dag_file}
 	COMMAND ${DEPENDS} ${tmp_xml_file} --plain --separator=';' > ${dag_file}
 	COMMENT "Generating dependency graph for ${fname}"
-	MAIN_DEPENDENCY ${DEPENDS}
-	DEPENDS ${tmp_xml_file}
+	MAIN_DEPENDENCY ${DEPENDS} ${PARSER_SRCS}
+	DEPENDS ${tmp_xml_file}  ${DEPENDS} ${PARSER_SRCS}
   )
   add_custom_target(${fname}.dag DEPENDS ${dag_file})
   set_source_files_properties(${dag_file} PROPERTIES GENERATED TRUE)

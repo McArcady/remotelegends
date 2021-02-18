@@ -188,7 +188,7 @@ class ProtoRenderer(AbstractRenderer):
         assert tname
         self.imports.add(tname)
         return self._render_line(xml, tname, ctx)
-
+    
 
     # converted type
     
@@ -268,7 +268,7 @@ class ProtoRenderer(AbstractRenderer):
         return '  /* ignored container %s */\n' % (ctx.name)
         
     
-    # structs
+    # struct / class
 
     def _render_struct_header(self, xml, tname, ctx):
         out = self.ident(xml, ctx.ident) + 'message ' + tname + ' {\n'
@@ -291,6 +291,18 @@ class ProtoRenderer(AbstractRenderer):
         else:
             value += 1
         return field, value
+        
+    def render_field_method(self, xml, ctx):
+        name = self.get_name(xml)
+        tname = xml.get('ret-type')
+        name = name[3:].lower()
+        if self.is_primitive_type(tname):
+            tname = AbstractRenderer.convert_type(tname)
+        else:
+            self.imports.add(tname)
+        out = self.ident(xml, ctx.ident) + ctx.keyword + ' '
+        out += '%s %s = %s;\n' % (tname, name, ctx.value)
+        return out
 
     def render_field_compound(self, xml, ctx):
         subtype = xml.get(f'{self.ns}subtype')
