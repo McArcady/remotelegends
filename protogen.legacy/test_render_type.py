@@ -338,7 +338,9 @@ class TestRenderType(unittest.TestCase):
         CPP = """
         void DFProto::describe_conversation(dfproto::conversation* proto, df::conversation* dfhack) {
 	  for (size_t i=0; i<dfhack->nem_54.size(); i++) {
-	    if (dfhack->nem_54[i] != NULL) describe_nemesis_record(proto->add_nem_54(), dfhack->nem_54[i]);
+	    if (dfhack->nem_54[i] != NULL) {
+              describe_nemesis_record(proto->add_nem_54(), dfhack->nem_54[i]);
+            }
 	  }
         }
         """
@@ -366,7 +368,9 @@ class TestRenderType(unittest.TestCase):
         CPP = """
         void DFProto::describe_adventure_item(dfproto::adventure_item* proto, df::adventure_item* dfhack) {
 	  describe_adventure_item_interact_choicest(proto->mutable_parent(), dfhack);
-	  if (dfhack->anon_1 != NULL) describe_item(proto->mutable_anon_1(), dfhack->anon_1);
+	  if (dfhack->anon_1 != NULL) {
+            describe_item(proto->mutable_anon_1(), dfhack->anon_1);
+          }
         }
         """
         IMPORTS = ['adventure_item_interact_choicest', 'item']
@@ -404,7 +408,9 @@ class TestRenderType(unittest.TestCase):
 	      proto->add_entities(dfhack->entities[i]);
 	    }
           };
-          if (dfhack->map != NULL) describe_T_map(proto->mutable_map(), dfhack->map);
+          if (dfhack->map != NULL) {
+            describe_T_map(proto->mutable_map(), dfhack->map);
+          }
         }
         """
         IMPORTS = []
@@ -652,7 +658,9 @@ class TestRenderType(unittest.TestCase):
         """
         CPP = """
         void DFProto::describe_job_handler(dfproto::job_handler* proto, df::job_handler* dfhack) {
-          if (dfhack->anon_1 != NULL) describe_unit(proto->mutable_anon_1(), dfhack->anon_1);
+          if (dfhack->anon_1 != NULL) {
+            describe_unit(proto->mutable_anon_1(), dfhack->anon_1);
+          }
           proto->set_anon_2(dfhack->anon_2);
         }
         """
@@ -697,7 +705,9 @@ class TestRenderType(unittest.TestCase):
             proto->set_anon_1(dfhack->anon_1);
           };
           for (size_t i=0; i<dfhack->anon_1.size(); i++) {
-            if (dfhack->anon_1[i] != NULL) describe_T_anon_1(proto->add_anon_1(), dfhack->anon_1[i]);
+            if (dfhack->anon_1[i] != NULL) {
+              describe_T_anon_1(proto->add_anon_1(), dfhack->anon_1[i]);
+            }
           }
           auto describe_T_anon_2 = [](dfproto::job_handler_T_anon_2* proto, df::job_handler::T_anon_2* dfhack) {
             proto->set_anon_1(dfhack->anon_1);

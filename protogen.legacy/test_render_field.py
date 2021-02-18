@@ -481,7 +481,9 @@ class TestRenderField(unittest.TestCase):
         """
         CPP = """
 	for (size_t i=0; i<dfhack->name_singular.size(); i++) {
-          if (dfhack->name_singular[i] != NULL) proto->add_name_singular(*dfhack->name_singular[i]);
+          if (dfhack->name_singular[i] != NULL) {
+            proto->add_name_singular(*dfhack->name_singular[i]);
+          }
 	}
         """
         IMPORTS = []
@@ -503,7 +505,9 @@ class TestRenderField(unittest.TestCase):
         """
         CPP = """
 	for (size_t i=0; i<dfhack->children.size(); i++) {
-          if (dfhack->children[i] != NULL) describe_building(proto->add_children(), dfhack->children[i]);
+          if (dfhack->children[i] != NULL) {
+            describe_building(proto->add_children(), dfhack->children[i]);
+          }
 	}
         """
         IMPORTS = ['building']
@@ -534,7 +538,9 @@ class TestRenderField(unittest.TestCase):
           proto->set_idx(dfhack->idx);
         };
         for (size_t i=0; i<dfhack->postings.size(); i++) {
-          if (dfhack->postings[i] != NULL) describe_T_postings(proto->add_postings(), dfhack->postings[i]);
+          if (dfhack->postings[i] != NULL) {
+            describe_T_postings(proto->add_postings(), dfhack->postings[i]);
+          }
         }
         """
         IMPORTS = []
@@ -625,7 +631,9 @@ class TestRenderField(unittest.TestCase):
         optional workshop_profile profile = 1;
         """
         CPP =  """
-        if (dfhack->profile != NULL) describe_workshop_profile(proto->mutable_profile(), dfhack->profile);
+        if (dfhack->profile != NULL) {
+          describe_workshop_profile(proto->mutable_profile(), dfhack->profile);
+        }
         """
         IMPORTS = ['workshop_profile']
         DFPROTO_IMPORTS = ['workshop_profile']
@@ -643,7 +651,9 @@ class TestRenderField(unittest.TestCase):
         optional int32 p_mattype = 1;
         """
         CPP =  """
-        if (dfhack->p_mattype != NULL) proto->set_p_mattype(*dfhack->p_mattype);
+        if (dfhack->p_mattype != NULL) {
+          proto->set_p_mattype(*dfhack->p_mattype);
+        }
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -676,7 +686,9 @@ class TestRenderField(unittest.TestCase):
 	    proto->add_entities(dfhack->entities[i]);
 	  }
         };
-        if (dfhack->map != NULL) describe_T_map(proto->mutable_map(), dfhack->map);
+        if (dfhack->map != NULL) {
+          describe_T_map(proto->mutable_map(), dfhack->map);
+        }
         """
         IMPORTS = []
         DFPROTO_IMPORTS = []
@@ -697,8 +709,10 @@ class TestRenderField(unittest.TestCase):
         repeated int32 temporary_trait_changes = 1;
         """
         CPP =  """
-        if (dfhack->temporary_trait_changes != NULL) for (size_t i=0; i<50; i++) {
-          proto->add_temporary_trait_changes((*dfhack->temporary_trait_changes)[i]);
+        if (dfhack->temporary_trait_changes != NULL) {
+          for (size_t i=0; i<50; i++) {
+            proto->add_temporary_trait_changes((*dfhack->temporary_trait_changes)[i]);
+          }
         }
         """
         IMPORTS = []
@@ -720,10 +734,12 @@ class TestRenderField(unittest.TestCase):
         repeated sphere_type spheres = 1;
         """
         CPP =  """
-        if (dfhack->spheres != NULL) for (size_t i=0; i<dfhack->spheres->size(); i++) {
-          dfproto::sphere_type value;
-          describe_sphere_type(&value, &(*dfhack->spheres)[i]));
-          proto->add_spheres(value);
+        if (dfhack->spheres != NULL) {
+          for (size_t i=0; i<dfhack->spheres->size(); i++) {
+            dfproto::sphere_type value;
+            describe_sphere_type(&value, &(*dfhack->spheres)[i]));
+            proto->add_spheres(value);
+          }
         }
         """
         IMPORTS = ['sphere_type']
@@ -771,7 +787,9 @@ class TestRenderField(unittest.TestCase):
         """
         CPP = """
         auto describe_T_unk = [](dfproto::mytype_T_unk* proto, df::mytype::T_unk* dfhack) {
-          if (dfhack->event != NULL) describe_entity_event(proto->mutable_event(), dfhack->event);
+          if (dfhack->event != NULL) {
+            describe_entity_event(proto->mutable_event(), dfhack->event);
+          }
           proto->set_anon_2(dfhack->anon_2);
         };
         describe_T_unk(proto->mutable_unk(), &dfhack->unk);
